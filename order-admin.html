@@ -1039,7 +1039,7 @@ async function refreshAll() {
       fetch(`${SERVER}/api/admin_history`)
     ]);
     activeGroups  = await grpR.json();
-    stores        = await storeR.json();
+    stores = (await storeR.json())['_admin_'] || {};
     announcements = await annR.json();
     allOrders     = await ordR.json();
     adminHistory  = histR.ok ? await histR.json() : [];

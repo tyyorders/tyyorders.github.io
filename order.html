@@ -1071,7 +1071,8 @@ function selectGroup(gid, row) {
 }
 
 function renderMenu() {
-  const storeData = stores[currentGroup.store] || {};
+  const creator = currentGroup.creator || '_admin_';
+  const storeData = (stores[creator] || {})[currentGroup.store] || {};
   const allowed = currentGroup.allowed || [];
   const list = document.getElementById('menu-list');
 
@@ -1451,7 +1452,8 @@ async function openEdit(fname) {
   editFname = fname;
   const g = groups.find(x => String(x.id) === String(orderEntry.group_id));
   editGroupData = g;
-  editStoreData = g ? (stores[g.store] || {}) : {};
+  const creator = g ? (g.creator || '_admin_') : '_admin_';
+  editStoreData = g ? ((stores[creator] || {})[g.store] || {}) : {};
   editLocked = g ? isPastDeadline(g.deadline) : true;
 
   document.getElementById('edit-title').textContent = `修改訂單 — ${g?.store || ''}`;
