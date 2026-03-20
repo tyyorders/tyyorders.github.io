@@ -372,7 +372,7 @@ async function submitGroup() {
   
   try {
     const res = await fetch(`${SERVER}/api/groups`, {
-      method: "POST", headers: { "Content-Type":"application/json", "x-user-name": uName, "x-user-pin": uPin },
+      method: "POST", headers: { "Content-Type":"application/json", "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) },
       body: JSON.stringify(newGroups)
     });
     if(!res.ok) throw new Error(await res.text());
@@ -441,12 +441,12 @@ async function deleteSelectedGroup() {
   const newArr = myGroups.filter(g => g.id !== selectedGroupId);
   try {
     const r1 = await fetch(`${SERVER}/api/orders/group/${selectedGroupId}`, {
-       method: 'DELETE', headers: { "x-user-name": uName, "x-user-pin": uPin }
+       method: 'DELETE', headers: { "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) }
     });
     if(!r1.ok) throw new Error(await r1.text());
     
     const r2 = await fetch(`${SERVER}/api/groups`, {
-      method:"POST", headers:{"Content-Type":"application/json","x-user-name":uName,"x-user-pin":uPin},
+      method:"POST", headers:{"Content-Type":"application/json","x-user-name": encodeURIComponent(uName),"x-user-pin": encodeURIComponent(uPin)},
       body:JSON.stringify(newArr)
     });
     if(!r2.ok) throw new Error(await r2.text());
@@ -597,7 +597,7 @@ async function saveMyStores() {
 
   try {
     const res = await fetch(`${SERVER}/api/stores`, {
-      method: "POST", headers: { "Content-Type": "application/json", "x-user-name": uName, "x-user-pin": uPin },
+      method: "POST", headers: { "Content-Type": "application/json", "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) },
       body: JSON.stringify(myStores)
     });
     if(!res.ok) throw new Error(await res.text());

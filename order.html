@@ -1253,8 +1253,8 @@ async function submitOrder() {
         method: 'POST', 
         headers: {
           'Content-Type':'application/json',
-          'x-user-name': profile.name,
-          'x-user-pin': profile.pin
+          "x-user-name": encodeURIComponent(profile.name),
+          "x-user-pin": encodeURIComponent(profile.pin)
         }, 
         body: JSON.stringify(body)
       });
@@ -1554,8 +1554,8 @@ async function saveEdit() {
       method: 'POST',
       headers: {
         'Content-Type':'application/json',
-        'x-user-name': profile.name,
-        'x-user-pin': profile.pin
+        "x-user-name": encodeURIComponent(profile.name),
+        "x-user-pin": encodeURIComponent(profile.pin)
       },
       body: JSON.stringify(body)
     });
@@ -1576,8 +1576,8 @@ async function deleteOrder() {
     const res = await fetch(`${SERVER}/api/orders/${encodeURIComponent(editFname)}`, { 
       method: 'DELETE',
       headers: {
-        'x-user-name': profile.name,
-        'x-user-pin': profile.pin
+        "x-user-name": encodeURIComponent(profile.name),
+        "x-user-pin": encodeURIComponent(profile.pin)
       }
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
