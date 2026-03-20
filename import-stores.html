@@ -50,23 +50,30 @@ function log(msg, cls='') {
 }
 
 async function doImport() {
+  const pw = prompt("請輸入系統總管密碼：");
+  if (!pw) {
+    log("❌ 已取消：需要總管密碼才能匯入", "err");
+    return;
+  }
+
   const btn = document.getElementById('btn');
   btn.disabled = true;
   btn.textContent = '匯入中...';
   document.getElementById('log').textContent = '';
 
   const storeNames = Object.keys(STORES);
-  log(`共 ${storeNames.length} 家商店，開始匯入...\n`);
+  log(`共 ${storeNames.length} 家商店，開始匯入至官方公版...\n`);
 
   try {
-    // 先取得現有資料（合併而非覆蓋）
-    const existing = await fetch(`${SERVER}/api/stores`).then(r => r.json()).catch(() => ({}));
-    const merged = { ...existing, ...STORES };
-
     const res = await fetch(`${SERVER}/api/stores`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(merged)
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-user-name': 'admin',
+        'x-user-pin': pw
+      },
+      // 寫入到 _admin_ 節點，後端 merge=True 會自動合併
+      body: JSON.stringify({ "_admin_": STORES })
     });
 
     if (res.ok) {
