@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>點餐系統 — 揪團主後台</title>
+<style>
+:root{
+  --bg:#f0fdf4;--surface:#fff;--navy:#14532d;--blue:#16a34a;--blue-lt:#dcfce7;
+  --green:#16a34a;--red:#dc2626;--red-lt:#fef2f2;
+  --amber:#d97706;--teal:#0d9488;--purple:#7c3aed;
+  --text:#1a2332;--text2:#4a5568;--text3:#8fa0ba;
+  --border:#dde3ed;--shadow:0 2px 8px rgba(0,0,0,0.08);--shadow-lg:0 8px 24px rgba(0,0,0,0.12);
+  --radius:12px;--rsm:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+.header{background:linear-gradient(135deg,#14532d 0%,#16a34a 100%);color:#fff;padding:0 1.5rem;display:flex;align-items:center;gap:.8rem;box-shadow:0 4px 20px rgba(22,163,74,.3);min-height:60px;position:sticky;top:0;z-index:100}
+.header-title{font-size:1.15rem;font-weight:900}
+.header-sub{font-size:.75rem;opacity:.7}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:.75rem}
+.back-btn{padding:.3rem .8rem;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:var(--rsm);text-decoration:none;font-size:.82rem;font-weight:700;transition:background .15s}
+.back-btn:hover{background:rgba(255,255,255,.25)}
+
+#auth-wall{position:fixed;inset:0;background:linear-gradient(135deg,#14532d,#16a34a);display:flex;align-items:center;justify-content:center;z-index:999}
+.auth-box{background:#fff;border-radius:16px;padding:2.5rem 3rem;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center}
+.auth-title{font-size:1.3rem;font-weight:900;color:var(--navy);margin-bottom:.4rem}
+.auth-sub{font-size:.85rem;color:var(--text3);margin-bottom:1.5rem}
+.auth-input{width:100%;border:2px solid var(--border);border-radius:var(--rsm);padding:.65rem 1rem;font-size:1rem;font-family:inherit;outline:none;margin-bottom:1rem}
+.auth-btn{width:100%;background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;border:none;border-radius:var(--rsm);padding:.7rem;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.auth-err{color:var(--red);font-size:.85rem;margin-top:.5rem;min-height:1.2em}
+
+.tabs{background:var(--surface);border-bottom:2px solid var(--border);padding:0 1.5rem;display:flex;gap:0;overflow-x:auto}
+.tab-btn{padding:.8rem 1.2rem;font-size:.88rem;font-weight:700;cursor:pointer;border:none;background:none;color:var(--text3);position:relative;transition:color .2s;white-space:nowrap}
+.tab-btn::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:transparent}
+.tab-btn.active{color:var(--blue)}
+.tab-btn.active::after{background:var(--blue)}
+
+.tab-panel{display:none;padding:1.25rem 1.5rem}
+.tab-panel.active{display:block}
+
+.card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:1rem}
+.card-header{padding:.8rem 1.1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.card-title{font-weight:800;font-size:.92rem}
+.card-body{padding:1rem 1.1rem}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}}
+
+.field{margin-bottom:.85rem}
+.field label{display:block;font-size:.8rem;font-weight:700;color:var(--text2);margin-bottom:.3rem}
+.field input,.field select{width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:.45rem .75rem;font-size:.88rem;outline:none;}
+.field-row{display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap}
+.field-row .field{margin-bottom:0;flex:1;min-width:80px}
+
+.btn{display:inline-flex;align-items:center;gap:.35rem;padding:.45rem 1rem;border-radius:var(--rsm);font-size:.85rem;font-weight:700;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#15803d}
+.btn-success{background:var(--teal);color:#fff}.btn-success:hover{background:#0f766e}
+.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-ghost{background:transparent;color:var(--text2);border:1.5px solid var(--border)}.btn-ghost:hover{background:var(--bg)}
+.btn-lg{padding:.65rem 1.5rem;font-size:.95rem;width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.tbl-wrap{overflow-x:auto;border-radius:var(--rsm);border:1px solid var(--border)}
+.data-tbl{width:100%;border-collapse:collapse;font-size:.85rem}
+.data-tbl th{background:#f1f5fb;padding:.55rem .7rem;text-align:left;font-weight:800;font-size:.78rem;color:var(--text2);border-bottom:2px solid var(--border)}
+.data-tbl td{padding:.55rem .7rem;border-bottom:1px solid var(--border);vertical-align:middle}
+.data-tbl tbody tr{cursor:pointer;}
+.data-tbl tbody tr:hover{background:#f8fafc}
+.data-tbl tbody tr.selected{background:var(--blue-lt)}
+
+.store-list{border:1px solid var(--border);border-radius:var(--rsm);height:420px;overflow-y:auto}
+.store-list-item{padding:.5rem .85rem;cursor:pointer;font-size:.88rem;border-bottom:1px solid var(--border);}
+.store-list-item:hover{background:var(--bg)}
+.store-list-item.active{background:var(--blue-lt);font-weight:700;color:var(--navy)}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;align-items:center;justify-content:center}
+.overlay.active{display:flex}
+.dialog{background:#fff;border-radius:16px;padding:1.5rem;width:90vw;max-width:400px}
+</style>
+</head>
+<body>
+
+<div id="auth-wall">
+  <div class="auth-box">
+    <div style="font-size:3rem;margin-bottom:1rem">👑</div>
+    <div class="auth-title">揪團主專屬後台</div>
+    <div class="auth-sub">請輸入您的註冊姓名與安全碼</div>
+    <input class="auth-input" id="auth-name" placeholder="您的姓名 (如：王小明)">
+    <input class="auth-input" type="password" id="auth-pin" placeholder="安全碼 (PIN)" onkeydown="if(event.key==='Enter')doAuth()">
+    <button class="auth-btn" id="btn-auth" onclick="doAuth()">驗證並進入</button>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+</div>
+
+<div id="main-app" style="display:none">
+  <header class="header">
+    <span style="font-size:1.4rem">👑</span>
+    <div>
+      <div class="header-title">團主大本營</div>
+      <div class="header-sub" id="header-user">您好，使用者</div>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-primary" onclick="loadAllData()" style="padding:.2rem .6rem;font-size:.75rem">🔄 重新整理</button>
+      <button class="btn btn-danger" onclick="logout()" style="padding:.2rem .6rem;font-size:.75rem">登出</button>
+      <a href="/" class="back-btn">← 回首頁</a>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" onclick="switchTab('launch',this)">🚀 發起新團購</button>
+    <button class="tab-btn" onclick="switchTab('manage',this)">📋 我的開團管理</button>
+    <button class="tab-btn" onclick="switchTab('stores',this)">🏪 私房菜單維護</button>
+  </nav>
+
+  <!-- 發起新團購 -->
+  <div class="tab-panel active" id="tab-launch">
+    <div class="card" style="max-width:600px;margin:0 auto">
+      <div class="card-header"><span class="card-title">發布新的揪團</span></div>
+      <div class="card-body">
+        <div class="field">
+          <label>選擇店家 (包含官方預設與您的私房菜單)</label>
+          <select id="sel-store"><option value="">── 請選擇 ──</option></select>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>取餐日</label><input type="date" id="inp-target"></div>
+          <div class="field"><label>收單日期</label><input type="date" id="inp-dead-date"></div>
+          <div class="field" style="max-width:80px"><label>收單時</label>
+            <select id="inp-h"><option>09</option><option selected>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option></select>
+          </div>
+          <div class="field" style="max-width:80px"><label>收單分</label>
+            <select id="inp-m"><option>00</option><option>15</option><option selected>30</option><option>45</option></select>
+          </div>
+        </div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.4rem 0">
+            <input type="checkbox" id="chk-lp" style="width:16px;height:16px"> 開放 LINE Pay / 匯款
+          </label>
+          <input type="text" id="inp-lp-info" placeholder="貼上您的 LINE 收款連結或銀行帳號 (選填)">
+        </div>
+        <button class="btn btn-primary btn-lg" onclick="submitGroup()">🚀 發布並產生連結</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 我的開團管理 -->
+  <div class="tab-panel" id="tab-manage">
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header"><span class="card-title">📝 我發起的有效團購</span></div>
+        <div class="card-body">
+          <div class="tbl-wrap">
+            <table class="data-tbl">
+              <thead><tr><th>店家</th><th>取餐日</th><th>收單時間</th></tr></thead>
+              <tbody id="tbody-my-groups">
+                <tr class="empty-row"><td colspan="3">尚無開團紀錄</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:.5rem;margin-top:1rem;justify-content:flex-end">
+            <button class="btn btn-danger" id="btn-del-group" onclick="deleteSelectedGroup()" disabled>❌ 刪除此團</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+           <span class="card-title">📊 此團統計與推廣</span>
+           <div style="margin-left:auto;display:flex;gap:.5rem">
+             <button class="btn btn-primary" id="btn-share" onclick="generateShareText()" disabled>💬 一鍵揪團文</button>
+             <button class="btn btn-success" id="btn-billing" onclick="generateBillingText()" disabled>💰 一鍵請款文</button>
+           </div>
+        </div>
+        <div class="card-body">
+          <div class="tbl-wrap">
+            <table class="data-tbl">
+              <thead><tr><th>訂購人</th><th>品名</th><th>數量</th><th>付款</th><th>小計</th></tr></thead>
+              <tbody id="tbody-group-orders">
+                <tr class="empty-row"><td colspan="5">請先於左側選擇開團</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="summary-section" style="margin-top:1rem;padding:1rem;background:#fefce8;border:1px solid #fde047;border-radius:8px;display:none">
+            <div style="font-weight:800;color:#854d0e;margin-bottom:.5rem">結算總計</div>
+            <div id="summary-text" style="font-size:.9rem;color:#713f12;line-height:1.6"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 私房店家資料維護 -->
+  <div class="tab-panel" id="tab-stores">
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🏪 我的私有菜單</span>
+          <div style="margin-left:auto"><button class="btn btn-primary" onclick="newStore()">➕ 新增店家</button></div>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="store-list" id="store-list">
+            <div style="padding:1rem">讀取中...</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title" id="store-edit-title">編輯店家</span></div>
+        <div class="card-body">
+          <div class="field-row">
+            <div class="field"><label>店家名稱 *</label><input type="text" id="store-name" placeholder="店家名稱"></div>
+            <div class="field"><label>分類</label><select id="store-cat"><option>飲料</option><option>便當</option><option>其他</option></select></div>
+          </div>
+          <div style="font-weight:700;font-size:.85rem;margin-bottom:.5rem">品項清單</div>
+          <div class="field-row" style="margin-bottom:1rem">
+            <div class="field"><label>品名</label><input type="text" id="item-name"></div>
+            <div class="field" style="max-width:80px"><label>價格</label><input type="number" id="item-price"></div>
+            <button class="btn btn-ghost" style="align-self:flex-end;margin-bottom:0" onclick="addStoreItem()">➕ 加入</button>
+          </div>
+          <div class="tbl-wrap" style="max-height:200px;overflow-y:auto">
+            <table class="data-tbl">
+              <thead><tr><th>品名</th><th>價格</th><th>操作</th></tr></thead>
+              <tbody id="tbody-store-items"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:1rem;display:flex;justify-content:flex-end">
+            <button class="btn btn-success btn-lg" style="width:auto" onclick="saveMyStores()">💾 儲存所有變更</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 分享文字彈窗 -->
+<div class="overlay" id="text-overlay">
+  <div class="dialog" style="max-width:500px">
+    <h3 style="font-size:1.1rem;font-weight:800;margin-bottom:.8rem" id="text-title"></h3>
+    <textarea id="text-area" style="width:100%;height:250px;padding:.8rem;border:1px solid #ccc;border-radius:8px;font-family:inherit;font-size:.85rem;line-height:1.6;resize:none" readonly></textarea>
+    <div style="display:flex;gap:.5rem;margin-top:1rem;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeText()">關閉</button>
+      <button class="btn btn-primary" onclick="copyText()">📋 複製到剪貼簿</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SERVER = 'https://lunch-order-173311611761.asia-east1.run.app';
+let uName = localStorage.getItem('group_leader_name') || '';
+let uPin  = localStorage.getItem('group_leader_pin') || '';
+
+let allStores = {};
+let myStores = {}; // _admin_ 以外，專屬 uName 的店家
+let myGroups = [];
+let allOrders = [];
+let selectedGroupId = null;
+let editingStoreName = null;
+
+async function doAuth() {
+  const n = document.getElementById('auth-name').value.trim();
+  const p = document.getElementById('auth-pin').value.trim();
+  if(!n || !p) { document.getElementById('auth-err').textContent = "欄位不可為空"; return; }
+  
+  const btn = document.getElementById('btn-auth');
+  btn.textContent = '驗證中...'; btn.disabled = true;
+  try {
+    const res = await fetch(`${SERVER}/api/users/login`, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({name:n, pin:p})
+    });
+    if (res.ok) {
+      uName = n; uPin = p;
+      localStorage.setItem('group_leader_name', n);
+      localStorage.setItem('group_leader_pin', p);
+      document.getElementById('auth-wall').style.display='none';
+      document.getElementById('main-app').style.display='block';
+      document.getElementById('header-user').textContent = `您好，${n} 主購`;
+      loadAllData();
+    } else {
+      document.getElementById('auth-err').textContent = "登入失敗，姓名或 PIN 碼錯誤";
+    }
+  } catch(e) {
+    document.getElementById('auth-err').textContent = "無法連線至伺服器";
+  }
+  btn.textContent = '驗證並進入'; btn.disabled = false;
+}
+
+function logout() {
+  localStorage.removeItem('group_leader_name');
+  localStorage.removeItem('group_leader_pin');
+  window.location.reload();
+}
+
+if (uName && uPin) {
+  document.getElementById('auth-wall').style.display='none';
+  document.getElementById('main-app').style.display='block';
+  document.getElementById('header-user').textContent = `您好，${uName} 主購`;
+  loadAllData();
+}
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+async function loadAllData() {
+  try {
+    const sr = await fetch(`${SERVER}/api/stores`);
+    allStores = await sr.json();
+    myStores = allStores[uName] || {};
+    
+    // 裝填發起團購的 Store 下拉與私房店清單
+    renderStoreSelect();
+    renderMyStoresList();
+
+    const gr = await fetch(`${SERVER}/api/groups`);
+    const gl = await gr.json();
+    myGroups = gl.filter(g => g.creator === uName);
+    renderMyGroups();
+
+    const or = await fetch(`${SERVER}/api/orders`);
+    allOrders = await or.json();
+    if(selectedGroupId) renderGroupOrders();
+  } catch(e) {
+    alert("讀取資料失敗: " + e.message);
+  }
+}
+
+function renderStoreSelect() {
+  const sel = document.getElementById('sel-store');
+  sel.innerHTML = '<option value="">── 請選擇店家 ──</option>';
+  // 加入 Admin 的
+  let p1 = document.createElement('optgroup'); p1.label = "🏢 官方公版店家";
+  Object.keys(allStores['_admin_']||{}).forEach(k => {
+    let opt = new Option(k, `_admin_|${k}`); p1.appendChild(opt);
+  });
+  sel.appendChild(p1);
+  // 加入 My stores
+  let p2 = document.createElement('optgroup'); p2.label = "🏠 我的私房菜單";
+  Object.keys(myStores||{}).forEach(k => {
+    let opt = new Option(k, `${uName}|${k}`); p2.appendChild(opt);
+  });
+  sel.appendChild(p2);
+}
+
+// ── 發起團購 ──
+async function submitGroup() {
+  const v = document.getElementById('sel-store').value;
+  if(!v) return alert("請選擇店家");
+  const [owner, storeName] = v.split('|');
+  const tD = document.getElementById('inp-target').value;
+  const dD = document.getElementById('inp-dead-date').value;
+  if(!tD || !dD) return alert("請填寫日期");
+  const dH = document.getElementById('inp-h').value;
+  const dM = document.getElementById('inp-m').value;
+  const lp = document.getElementById('chk-lp').checked;
+  const lpInf = document.getElementById('inp-lp-info').value;
+
+  const grp = {
+    id: Date.now().toString(),
+    creator: uName,
+    store: storeName,
+    target_date: tD,
+    dead_time: `${dD} ${dH}:${dM}`,
+    line_pay: lp,
+    line_pay_info: lpInf,
+    items: [], // 預設全開
+  };
+
+  // 後端 API 為覆寫全部 managed 陣列
+  const newGroups = [...myGroups, grp];
+  
+  try {
+    const res = await fetch(`${SERVER}/api/groups`, {
+      method: "POST", headers: { "Content-Type":"application/json", "x-user-name": uName, "x-user-pin": uPin },
+      body: JSON.stringify(newGroups)
+    });
+    if(!res.ok) throw new Error(await res.text());
+    alert("發佈成功！");
+    selectedGroupId = grp.id; // 自動選取
+    await loadAllData();
+    switchTab('manage', document.querySelectorAll('.tab-btn')[1]);
+  } catch(e) { alert(e.message); }
+}
+
+// ── 開團管理 ──
+function renderMyGroups() {
+  const tb = document.getElementById('tbody-my-groups');
+  tb.innerHTML = '';
+  if(!myGroups.length) tb.innerHTML = '<tr class="empty-row"><td colspan="3">尚無紀錄</td></tr>';
+  myGroups.forEach(g => {
+    const tr = document.createElement('tr');
+    tr.onclick = function() {
+      tb.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+      this.classList.add('selected');
+      selectedGroupId = g.id;
+      renderGroupOrders();
+    };
+    if (g.id === selectedGroupId) tr.classList.add('selected');
+    tr.innerHTML = `<td>${g.store}</td><td>${g.target_date}</td><td>${g.dead_time}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function renderGroupOrders() {
+  const btnShare = document.getElementById('btn-share');
+  const btnBill = document.getElementById('btn-billing');
+  const btnDel = document.getElementById('btn-del-group');
+  if(!selectedGroupId) {
+    btnShare.disabled=true; btnBill.disabled=true; btnDel.disabled=true;
+    return;
+  }
+  btnShare.disabled=false; btnBill.disabled=false; btnDel.disabled=false;
+  
+  const gOrders = allOrders.map(o => o[1]).filter(o => o.group_id === selectedGroupId);
+  const tb = document.getElementById('tbody-group-orders');
+  tb.innerHTML = '';
+  if(!gOrders.length) {
+    tb.innerHTML = '<tr class="empty-row"><td colspan="5">目前尚無人下單</td></tr>';
+    document.getElementById('summary-section').style.display='none';
+    return;
+  }
+
+  let tot = 0;
+  gOrders.forEach(o => {
+    let sub = parseInt(o.qty)*parseInt(o.price); tot+=sub;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${o.user_name}</td><td>${o.item_name}</td><td>${o.qty}</td><td>${o.pay_method}</td><td>$${sub}</td>`;
+    tb.appendChild(tr);
+  });
+
+  const sumSec = document.getElementById('summary-section');
+  const sumTxt = document.getElementById('summary-text');
+  sumSec.style.display = 'block';
+  sumTxt.innerHTML = `本團目前共 <strong>${gOrders.length}</strong> 筆品項記錄，總金額結算為 <strong>$${tot}</strong> 元。`;
+}
+
+async function deleteSelectedGroup() {
+  if(!selectedGroupId) return;
+  if(!confirm("確定要刪除這筆開團紀錄嗎？若有人點餐也會被一併刪除。")) return;
+  const newArr = myGroups.filter(g => g.id !== selectedGroupId);
+  try {
+    const r1 = await fetch(`${SERVER}/api/orders/group/${selectedGroupId}`, {
+       method: 'DELETE', headers: { "x-user-name": uName, "x-user-pin": uPin }
+    });
+    if(!r1.ok) throw new Error(await r1.text());
+    
+    const r2 = await fetch(`${SERVER}/api/groups`, {
+      method:"POST", headers:{"Content-Type":"application/json","x-user-name":uName,"x-user-pin":uPin},
+      body:JSON.stringify(newArr)
+    });
+    if(!r2.ok) throw new Error(await r2.text());
+    selectedGroupId = null;
+    await loadAllData();
+  } catch(e) { alert(e.message); }
+}
+
+// ── 文案產生器 ──
+function openText(title, text) {
+  document.getElementById('text-title').textContent = title;
+  document.getElementById('text-area').value = text;
+  document.getElementById('text-overlay').classList.add('active');
+}
+function closeText() { document.getElementById('text-overlay').classList.remove('active'); }
+function copyText() {
+  const t = document.getElementById('text-area');
+  t.select(); document.execCommand('copy');
+  alert('已複製到剪貼簿！');
+}
+
+function generateShareText() {
+  const g = myGroups.find(x => x.id === selectedGroupId);
+  const loc = window.location;
+  const link = `${loc.protocol}//${loc.host}${loc.pathname.replace('group-admin','order')}?gid=${g.id}`;
+  const txt = `🔥 【揪團啦】${g.store}
+⏳ 收單時間：${g.dead_time}
+
+👉 點擊下方專屬連結，免打字直接跟團：
+${link}`;
+  openText(`一鍵揪團文案`, txt);
+}
+
+function generateBillingText() {
+  const g = myGroups.find(x => x.id === selectedGroupId);
+  const gOrders = allOrders.map(o=>o[1]).filter(o=>o.group_id===selectedGroupId);
+  let byUser = {};
+  gOrders.forEach(o => {
+    if(!byUser[o.user_name]) byUser[o.user_name] = { total:0, items:[] };
+    let sub = parseInt(o.qty)*parseInt(o.price);
+    byUser[o.user_name].total += sub;
+    let opts = o.options ? ` (${o.options})` : '';
+    byUser[o.user_name].items.push(`- ${o.item_name} x${o.qty} = $${sub}${opts}`);
+  });
+
+  let lines = [`💰 【${g.store}】請款明細\n`];
+  let grand = 0;
+  for (let [un, info] of Object.entries(byUser)) {
+    lines.push(`👤 ${un}：共 $${info.total}`);
+    lines.push(info.items.join('\n'));
+    lines.push('');
+    grand += info.total;
+  }
+  lines.push(`===================`);
+  lines.push(`💵 本團總計：$${grand}`);
+  lines.push(`⚠️ 請將現金交給【${uName}】`);
+  if(g.line_pay && g.line_pay_info) lines.push(`💳 LINE Pay / 匯款：${g.line_pay_info}`);
+
+  openText(`一鍵請款明細`, lines.join('\n'));
+}
+
+// ── 私房菜單維護 ──
+function renderMyStoresList() {
+  const ls = document.getElementById('store-list');
+  ls.innerHTML = '';
+  const stores = Object.keys(myStores);
+  if(!stores.length) ls.innerHTML = '<div style="padding:1rem;color:var(--text3)">尚無店家紀錄。請按右側新增。</div>';
+  stores.forEach(sn => {
+    let d = document.createElement('div');
+    d.className = 'store-list-item';
+    d.textContent = sn;
+    d.onclick = () => {
+      document.querySelectorAll('.store-list-item').forEach(x=>x.classList.remove('active'));
+      d.classList.add('active');
+      loadStoreEditor(sn);
+    };
+    ls.appendChild(d);
+  });
+}
+
+function newStore() {
+  editingStoreName = "";
+  document.getElementById('store-name').value = "";
+  document.getElementById('store-cat').value = "飲料";
+  document.getElementById('tbody-store-items').innerHTML = "";
+  document.getElementById('store-edit-title').textContent = "新增店家";
+  document.querySelectorAll('.store-list-item').forEach(x=>x.classList.remove('active'));
+}
+
+function loadStoreEditor(sn) {
+  editingStoreName = sn;
+  document.getElementById('store-edit-title').textContent = `編輯店家: ${sn}`;
+  document.getElementById('store-name').value = sn;
+  document.getElementById('store-cat').value = myStores[sn].category || '其他';
+  const tb = document.getElementById('tbody-store-items');
+  tb.innerHTML = '';
+  const items = myStores[sn].items || [];
+  items.forEach((it, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${it.name}</td><td>${it.price}</td><td><button class="btn btn-danger" style="padding:.2rem .4rem;font-size:.7rem" onclick="removeStoreItem(${idx})">刪</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function addStoreItem() {
+  const n = document.getElementById('item-name').value.trim();
+  const p = document.getElementById('item-price').value;
+  if(!n) return;
+  if(!editingStoreName && !document.getElementById('store-name').value.trim()) return alert("請先填寫上方店家名稱再加入品項");
+  
+  // 建立暫存陣列如果不存在
+  if(editingStoreName && !myStores[editingStoreName]) {
+    myStores[editingStoreName] = { category: document.getElementById('store-cat').value, items: [] };
+  }
+  
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${n}</td><td>${p}</td><td><button class="btn btn-danger" style="padding:.2rem .4rem;font-size:.7rem" onclick="this.closest('tr').remove()">刪</button></td>`;
+  document.getElementById('tbody-store-items').appendChild(tr);
+  
+  document.getElementById('item-name').value = '';
+  document.getElementById('item-price').value = '';
+}
+
+function removeStoreItem(idx) {
+  if(editingStoreName && myStores[editingStoreName]) {
+    myStores[editingStoreName].items.splice(idx, 1);
+    loadStoreEditor(editingStoreName);
+  }
+}
+
+async function saveMyStores() {
+  const sn = document.getElementById('store-name').value.trim();
+  if(!sn) return alert("請填寫店家名稱");
+  
+  // 收集 DOM
+  const cat = document.getElementById('store-cat').value;
+  const items = [];
+  document.getElementById('tbody-store-items').querySelectorAll('tr').forEach(tr => {
+    let tds = tr.querySelectorAll('td');
+    if(tds.length === 3) items.push({name: tds[0].textContent, price: parseInt(tds[1].textContent) || 0, options: ['rice','sug','ice']} );
+  });
+
+  // 如果更名了，要刪掉舊的
+  if (editingStoreName && editingStoreName !== sn) {
+    delete myStores[editingStoreName];
+  }
+  myStores[sn] = { category: cat, items: items };
+
+  try {
+    const res = await fetch(`${SERVER}/api/stores`, {
+      method: "POST", headers: { "Content-Type": "application/json", "x-user-name": uName, "x-user-pin": uPin },
+      body: JSON.stringify(myStores)
+    });
+    if(!res.ok) throw new Error(await res.text());
+    alert("店家資料儲存成功！");
+    await loadAllData();
+    loadStoreEditor(sn);
+  } catch(e) { alert(e.message); }
+}
+
+</script>
+</body>
+</html>

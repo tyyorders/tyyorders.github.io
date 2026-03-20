@@ -734,7 +734,7 @@ async function doAuth() {
   btn.textContent = '驗證中...'; btn.disabled = true; errEl.textContent = '';
   try {
     const res = await fetch(`${SERVER}/api/auth`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw},
       body: JSON.stringify({ role:'admin', password: pw }),
       signal: AbortSignal.timeout(5000)
     });
@@ -941,7 +941,7 @@ function renderUsers() {
 async function resetUserPin(name) {
   if (!confirm(`確定要重設【${name}】的安全碼嗎？\n\n重設後，${name} 下次登入時系統會要求重新設定新安全碼。`)) return;
   try {
-    const res = await fetch(`${SERVER}/api/admin/users/${encodeURIComponent(name)}/reset-pin?admin_password=${encodeURIComponent(adminPw)}`, { method:'POST' });
+    const res = await fetch(`${SERVER}/api/admin/users/${encodeURIComponent(name)}/reset-pin?admin_password=${encodeURIComponent(adminPw)}`, { method:'POST', headers:{'x-user-name':'admin', 'x-user-pin':adminPw} });
     if (!res.ok) throw new Error();
     showToast(`已重設 ${name} 的安全碼`, 'success');
     loadUsers();
@@ -951,7 +951,7 @@ async function resetUserPin(name) {
 async function deleteUser(name) {
   if (!confirm(`確定要清除【${name}】的帳號嗎？\n\n歷史訂單不受影響。若日後需要可重新註冊。`)) return;
   try {
-    const res = await fetch(`${SERVER}/api/admin/users/${encodeURIComponent(name)}?admin_password=${encodeURIComponent(adminPw)}`, { method:'DELETE' });
+    const res = await fetch(`${SERVER}/api/admin/users/${encodeURIComponent(name)}?admin_password=${encodeURIComponent(adminPw)}`, { method:'DELETE', headers:{'x-user-name':'admin', 'x-user-pin':adminPw} });
     if (!res.ok) throw new Error();
     showToast(`已清除 ${name} 的帳號`, 'success');
     loadUsers();
@@ -1124,8 +1124,8 @@ async function performAutoArchiving() {
   if (changed) {
     activeGroups = remaining;
     // 儲存回伺服器
-    await fetch(`${SERVER}/api/groups`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(activeGroups) });
-    await fetch(`${SERVER}/api/admin_history`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(adminHistory) });
+    await fetch(`${SERVER}/api/groups`, { method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw}, body:JSON.stringify(activeGroups) });
+    await fetch(`${SERVER}/api/admin_history`, { method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw}, body:JSON.stringify(adminHistory) });
     showToast(`已自動歸檔 ${toArchive.length} 筆過期開團`, 'warning');
   }
 }
@@ -1188,7 +1188,7 @@ async function submitGroup() {
 
   activeGroups.push(newG);
   try {
-    await fetch(`${SERVER}/api/groups`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(activeGroups) });
+    await fetch(`${SERVER}/api/groups`, { method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw}, body:JSON.stringify(activeGroups) });
     showToast('新訂餐已發布！', 'success');
     renderGroupsTab();
     renderCheckoutGroups();
@@ -1234,7 +1234,7 @@ async function delGroup() {
   if (!selectedGroupId) return;
   if (!confirm('確定要刪除選取的開團設定嗎？')) return;
   activeGroups = activeGroups.filter(g=>String(g.id)!==String(selectedGroupId));
-  await fetch(`${SERVER}/api/groups`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(activeGroups) });
+  await fetch(`${SERVER}/api/groups`, { method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw}, body:JSON.stringify(activeGroups) });
   selectedGroupId = null;
   document.getElementById('btn-del-group').disabled = true;
   document.getElementById('summary-bar').style.display = 'none';
@@ -1298,7 +1298,7 @@ async function saveEditGroup() {
   g.opts.linepay = document.getElementById('eg-lp').checked;
   g.opts.linepay_info = document.getElementById('eg-lp-info').value.trim();
 
-  await fetch(`${SERVER}/api/groups`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(activeGroups) });
+  await fetch(`${SERVER}/api/groups`, { method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw}, body:JSON.stringify(activeGroups) });
   closeModal('modal-edit-group');
   showToast('開團已修改！', 'success');
   renderGroupsTab();
@@ -1446,7 +1446,7 @@ async function saveEditOrder() {
     user_name:entry[1].user_name, item_name:itemName, qty:parseInt(document.getElementById('eo-qty').value)||1,
     price, pay_method:document.getElementById('eo-pay').value, options:newOpts.join('、'), timestamp:entry[1].timestamp||'' };
   try {
-    const r = await fetch(`${SERVER}/api/orders`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    const r = await fetch(`${SERVER}/api/orders`, { method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw}, body:JSON.stringify(body) });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     showToast('訂單已修改！','success');
     closeModal('modal-edit-order');
@@ -1457,7 +1457,7 @@ async function saveEditOrder() {
 async function deleteOrderAdmin() {
   if (!confirm(`【管理員權限】確定要強制刪除 ${allOrders.find(([f])=>f===editOrderFname)?.[1]?.user_name||''} 的這筆訂單嗎？`)) return;
   try {
-    await fetch(`${SERVER}/api/orders/${encodeURIComponent(editOrderFname)}`, {method:'DELETE'});
+    await fetch(`${SERVER}/api/orders/${encodeURIComponent(editOrderFname)}`, {method:'DELETE', headers:{'x-user-name':'admin', 'x-user-pin':adminPw}});
     showToast('訂單已刪除','success');
     closeModal('modal-edit-order');
     if (currentCheckoutGid) loadCheckout(currentCheckoutGid);
@@ -1539,7 +1539,7 @@ async function delHistoryRecord() {
   if (!selectedHistIds.size) return showToast('請先選取要刪除的紀錄','warning');
   if (!confirm(`確定要刪除選取的 ${selectedHistIds.size} 筆歷史紀錄嗎？（相關訂單明細也會一併從本機清除）`)) return;
   adminHistory = adminHistory.filter(g=>!selectedHistIds.has(String(g.id)));
-  await fetch(`${SERVER}/api/admin_history`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(adminHistory) });
+  await fetch(`${SERVER}/api/admin_history`, { method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw}, body:JSON.stringify(adminHistory) });
   selectedHistIds.clear();
   showToast('已刪除','success');
   renderHistory();
@@ -1574,7 +1574,7 @@ async function saveAnn() {
   const newA = { id: editAnnId || Date.now().toString(), start:document.getElementById('ann-start').value, end:document.getElementById('ann-end').value, content:txt };
   if (editAnnId) announcements = announcements.map(a=>a.id===editAnnId?newA:a);
   else announcements.push(newA);
-  await fetch(`${SERVER}/api/announcements`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(announcements) });
+  await fetch(`${SERVER}/api/announcements`, { method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw}, body:JSON.stringify(announcements) });
   clearAnn();
   renderAnnouncements();
   showToast('公告已儲存','success');
@@ -1584,7 +1584,7 @@ async function delAnn() {
   if (!editAnnId) return showToast('請先點選要刪除的公告','warning');
   if (!confirm('確定刪除此公告？')) return;
   announcements = announcements.filter(a=>a.id!==editAnnId);
-  await fetch(`${SERVER}/api/announcements`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(announcements) });
+  await fetch(`${SERVER}/api/announcements`, { method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw}, body:JSON.stringify(announcements) });
   clearAnn();
   renderAnnouncements();
   showToast('已刪除','success');
@@ -1775,7 +1775,7 @@ async function saveStore() {
   };
   currentStoreKey = sname;
 
-  await fetch(`${SERVER}/api/stores`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(stores) });
+  await fetch(`${SERVER}/api/stores`, { method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw}, body:JSON.stringify(stores) });
   showToast(`店家【${sname}】已儲存！`,'success');
   renderStoreList();
   refreshStoreSel();
@@ -1785,7 +1785,7 @@ async function delStore() {
   if (!currentStoreKey) return showToast('請先選擇要刪除的店家','warning');
   if (!confirm(`確定要刪除店家【${currentStoreKey}】嗎？`)) return;
   delete stores[currentStoreKey];
-  await fetch(`${SERVER}/api/stores`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(stores) });
+  await fetch(`${SERVER}/api/stores`, { method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw}, body:JSON.stringify(stores) });
   showToast('已刪除','success');
   newStore();
   renderStoreList();

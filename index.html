@@ -131,6 +131,9 @@
   .app-card.red { color: var(--red); }
   .app-card.red::before { background: var(--red); }
   .app-card.red:hover, .app-card.red:active { border-color: var(--red); }
+  .app-card.green { color: #16a34a; }
+  .app-card.green::before { background: #16a34a; }
+  .app-card.green:hover, .app-card.green:active { border-color: #16a34a; }
 
   .app-icon {
     width: 58px; height: 58px;
@@ -141,6 +144,7 @@
   }
   .app-card.blue .app-icon { background: var(--blue-light); }
   .app-card.red .app-icon { background: var(--red-light); }
+  .app-card.green .app-icon { background: #dcfce7; }
 
   .app-info { flex: 1; }
   .app-name { font-size: 1.1rem; font-weight: 800; color: var(--text); }
@@ -152,6 +156,7 @@
   }
   .app-card.blue .app-badge { background: var(--blue-light); color: var(--blue); }
   .app-card.red .app-badge { background: var(--red-light); color: var(--red); }
+  .app-card.green .app-badge { background: #dcfce7; color: #16a34a; }
 
   .app-arrow { color: #cbd5e1; font-size: 1.2rem; flex-shrink: 0; transition: color 0.18s; }
   .app-card:hover .app-arrow, .app-card:active .app-arrow { color: currentColor; }
@@ -221,12 +226,22 @@
     <div class="app-arrow">→</div>
   </a>
 
+  <a class="app-card green" href="group-admin.html">
+    <div class="app-icon">👑</div>
+    <div class="app-info">
+      <div class="app-name">團購揪團主專用</div>
+      <div class="app-desc">發起開團、獨立私房菜單、一鍵請款</div>
+      <span class="app-badge">人人皆主</span>
+    </div>
+    <div class="app-arrow">→</div>
+  </a>
+
   <a class="app-card red" href="order-admin.html">
     <div class="app-icon">🍔</div>
     <div class="app-info">
-      <div class="app-name">點餐管理端</div>
-      <div class="app-desc">開團管理、查看所有訂單、結帳</div>
-      <span class="app-badge">管理員專用</span>
+      <div class="app-name">系統大後台</div>
+      <div class="app-desc">強制管理所有訂單、刪除帳號特權</div>
+      <span class="app-badge">限總管</span>
     </div>
     <div class="app-arrow">→</div>
   </a>

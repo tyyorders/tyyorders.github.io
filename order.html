@@ -908,6 +908,7 @@ function switchTab(id, btn) {
 // ═══════════════════════════════════════
 let isOnline = false;
 let pingTimer = null;
+let _gidSelected = false;
 
 async function pingServer() {
   const ctrl = new AbortController();
@@ -978,6 +979,21 @@ async function refreshAll() {
 
     renderGroups();
     populateViewGroups();
+
+    // 解析 URL gid
+    const params = new URLSearchParams(window.location.search);
+    const gid = params.get('gid');
+    if (gid && !_gidSelected) {
+      _gidSelected = true;
+      // 延遲一下等待 DOM 繪製完成
+      setTimeout(() => {
+        const row = document.querySelector(`tr[data-gid="${gid}"]`);
+        if (row) {
+          row.scrollIntoView({behavior: 'smooth', block: 'center'});
+          selectGroup(gid, row);
+        }
+      }, 300);
+    }
   } catch(e) {
     showToast('無法連線至伺服器，請確認伺服器是否啟動', 'error');
   }
@@ -1232,8 +1248,15 @@ async function submitOrder() {
         item_name: item.name, qty: item.qty, price: item.price,
         pay_method: item.pay, options: item.opts || '', timestamp: ts
       };
+      const profile = getProfile();
       const res = await fetch(`${SERVER}/api/orders/upsert`, {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+        method: 'POST', 
+        headers: {
+          'Content-Type':'application/json',
+          'x-user-name': profile.name,
+          'x-user-pin': profile.pin
+        }, 
+        body: JSON.stringify(body)
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const result = await res.json();
@@ -1529,7 +1552,11 @@ async function saveEdit() {
   try {
     const res = await fetch(`${SERVER}/api/orders`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: {
+        'Content-Type':'application/json',
+        'x-user-name': profile.name,
+        'x-user-pin': profile.pin
+      },
       body: JSON.stringify(body)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1545,7 +1572,14 @@ async function deleteOrder() {
   if (editLocked) return;
   if (!confirm('確定要刪除取消這筆訂單嗎？')) return;
   try {
-    const res = await fetch(`${SERVER}/api/orders/${encodeURIComponent(editFname)}`, { method: 'DELETE' });
+    const profile = getProfile();
+    const res = await fetch(`${SERVER}/api/orders/${encodeURIComponent(editFname)}`, { 
+      method: 'DELETE',
+      headers: {
+        'x-user-name': profile.name,
+        'x-user-pin': profile.pin
+      }
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     showToast('訂單已刪除', 'success');
     closeEdit();
