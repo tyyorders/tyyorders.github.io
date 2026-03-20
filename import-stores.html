@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>商店資料匯入工具</title>
+<style>
+  body { font-family: 'Microsoft JhengHei', sans-serif; background: #f0f4f8; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+  .box { background: white; border-radius: 16px; padding: 2rem; width: min(480px, 92vw); box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+  h2 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+  p { font-size: 0.85rem; color: #4a5568; margin-bottom: 1.5rem; }
+  .log { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; font-size: 0.8rem; font-family: monospace; height: 220px; overflow-y: auto; white-space: pre-wrap; color: #1a2332; }
+  .log .ok  { color: #16a34a; }
+  .log .err { color: #dc2626; }
+  button { margin-top: 1rem; width: 100%; padding: 0.75rem; background: #2563eb; color: white; border: none; border-radius: 10px; font-size: 1rem; font-family: inherit; font-weight: 700; cursor: pointer; }
+  button:disabled { background: #94a3b8; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h2>🏪 商店資料一次性匯入</h2>
+  <p>將 Stores.json 的所有商店資料寫入 Firestore。<br>每家店只需要匯入一次，之後可在管理端正常新增/編輯。</p>
+  <div class="log" id="log">按下按鈕開始匯入...</div>
+  <button id="btn" onclick="doImport()">開始匯入</button>
+</div>
+
+<script>
+const SERVER = 'https://lunch-order-173311611761.asia-east1.run.app';
+
+const STORES = {
+    "二貨": {"category":"便當","phone":"3361065","options":{"rice":false,"sugar":false,"ice":false,"linepay":false,"linepay_info":""},"items":[{"name":"糖醋雞丁","price":110,"opts":{"rice":false,"sugar":false,"ice":false}},{"name":"宮保雞丁","price":110,"opts":{"rice":false,"sugar":false,"ice":false}},{"name":"蔥爆牛肉","price":110,"opts":{"rice":false,"sugar":false,"ice":false}},{"name":"沙茶豬肉","price":110,"opts":{"rice":false,"sugar":false,"ice":false}}]},
+    "隨緣素食": {"category":"便當","phone":"","options":{"rice":false,"sugar":false,"ice":false,"linepay":false,"linepay_info":""},"items":[{"name":"五穀餐盒","price":85,"opts":{"rice":false,"sugar":false,"ice":false}},{"name":"白飯餐盒","price":80,"opts":{"rice":false,"sugar":false,"ice":false}}]},
+    "大無敵": {"category":"便當","phone":"3321188","options":{"rice":false,"sugar":false,"ice":false},"items":[{"name":"烤肉飯","price":115,"opts":{"rice":false,"sugar":false,"ice":false}},{"name":"烤雞排飯","price":120,"opts":{"rice":false,"sugar":false,"ice":false}},{"name":"烤五花肉飯","price":115,"opts":{"rice":false,"sugar":false,"ice":false}}]},
+    "龍潭肉包": {"category":"其他","phone":"","options":{"rice":false,"sugar":false,"ice":false},"items":[{"name":"肉包","price":16},{"name":"高麗菜包","price":16},{"name":"梅干扣肉","price":16},{"name":"鹹芋頭包","price":16},{"name":"紅豆包","price":17},{"name":"香菇起司包","price":17},{"name":"芋泥包","price":17},{"name":"雪裡紅包","price":17},{"name":"芝麻包","price":17},{"name":"花生包","price":19},{"name":"黑糖饅頭","price":17},{"name":"芋頭饅頭","price":17}]},
+    "Energy水煮健康餐盒": {"category":"便當","phone":"","options":{"rice":true,"sugar":false,"ice":false,"linepay":false,"linepay_info":""},"items":[{"name":"水煮雞","price":120,"opts":{"rice":true}},{"name":"蒜泥豬肉","price":120,"opts":{"rice":true}},{"name":"泡菜豬肉","price":120,"opts":{"rice":true}},{"name":"薄鹽烤鯖魚","price":120,"opts":{"rice":true}},{"name":"滷雞腿","price":120,"opts":{"rice":true}},{"name":"蔥鹽雞肉","price":120,"opts":{"rice":true}},{"name":"辣味菇菇雞","price":130,"opts":{"rice":true}}]},
+    "50嵐": {"category":"飲料","phone":"","options":{"rice":false,"sugar":false,"ice":false,"linepay":false,"linepay_info":""},"items":[{"name":"請自行來登記","price":0}]},
+    "春宅": {"category":"飲料","phone":"","options":{"rice":false,"sugar":false,"ice":false,"linepay":false,"linepay_info":""},"items":[{"name":"請自行來登記，謝謝","price":0}]},
+    "午彩椒素食": {"category":"便當","phone":"","options":{"rice":false,"sugar":false,"ice":false},"items":[{"name":"三杯杏鮑菇飯(五穀)","price":100},{"name":"香椿菇菇絲飯(五穀)","price":110},{"name":"檸檬草黑胡排(炸)","price":120},{"name":"檸檬草黑胡排(滷)","price":120}]},
+    "向陽冬瓜肉飯": {"category":"便當","phone":"","options":{"rice":false,"sugar":false,"ice":false},"items":[{"name":"招牌雞腿排飯","price":110},{"name":"辣味雞腿排飯","price":120},{"name":"健康菜飯","price":95},{"name":"煎豬排飯","price":100},{"name":"冬瓜肉飯","price":80}]},
+    "冠軍燒臘": {"category":"便當","phone":"","options":{"rice":true,"sugar":false,"ice":false},"items":[{"name":"香腸飯","price":100},{"name":"蜜汁叉燒飯","price":110},{"name":"玫瑰油雞飯","price":110},{"name":"燒鴨飯","price":110},{"name":"燒肉飯","price":110},{"name":"港式臘味飯","price":120},{"name":"三寶飯","price":130},{"name":"招牌飯","price":160},{"name":"雙拼飯(叉燒+油雞)","price":120},{"name":"雙拼飯(叉燒+燒鴨)","price":120},{"name":"蜜汁烤腿飯","price":130},{"name":"玫瑰油雞腿飯","price":130}]}
+};
+
+function log(msg, cls='') {
+  const el = document.getElementById('log');
+  const line = document.createElement('span');
+  if (cls) line.className = cls;
+  line.textContent = msg + '\n';
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function doImport() {
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.textContent = '匯入中...';
+  document.getElementById('log').textContent = '';
+
+  const storeNames = Object.keys(STORES);
+  log(`共 ${storeNames.length} 家商店，開始匯入...\n`);
+
+  try {
+    // 先取得現有資料（合併而非覆蓋）
+    const existing = await fetch(`${SERVER}/api/stores`).then(r => r.json()).catch(() => ({}));
+    const merged = { ...existing, ...STORES };
+
+    const res = await fetch(`${SERVER}/api/stores`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(merged)
+    });
+
+    if (res.ok) {
+      storeNames.forEach(n => log(`  ✓ ${n}`, 'ok'));
+      log(`\n✅ 全部匯入成功！共 ${storeNames.length} 家商店。`, 'ok');
+      log('可以關閉此頁面，回到管理端確認。', 'ok');
+    } else {
+      const err = await res.text();
+      log(`❌ 匯入失敗：${err}`, 'err');
+      btn.disabled = false;
+      btn.textContent = '重試';
+    }
+  } catch(e) {
+    log(`❌ 無法連線至伺服器：${e.message}`, 'err');
+    btn.disabled = false;
+    btn.textContent = '重試';
+  }
+}
+</script>
+</body>
+</html>
