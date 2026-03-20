@@ -3,23 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-<title>桃園分署 ─ 辦公室整合系統</title>
-<!-- 改用本地系統字體，避免內網環境等待 Google Fonts 逾時 -->
+<title>點餐小助手</title>
 <style>
   :root {
-    --navy: #1e3a5f;
     --blue: #2563eb;
     --blue-light: #eff6ff;
-    --green: #16a34a;
-    --green-light: #f0fdf4;
-    --amber: #d97706;
-    --amber-light: #fffbeb;
     --red: #dc2626;
     --red-light: #fef2f2;
-    --purple: #7c3aed;
-    --purple-light: #f5f3ff;
-    --gray: #6b7280;
-    --gray-light: #f9fafb;
     --bg: #f0f4f8;
     --surface: #ffffff;
     --border: #e2e8f0;
@@ -29,7 +19,6 @@
     --shadow: 0 4px 20px rgba(0,0,0,0.08);
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { font-size: 16px; }
   body {
     font-family: 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif;
     background: var(--bg);
@@ -37,10 +26,9 @@
     color: var(--text);
   }
 
-  /* ── HERO HEADER ── */
   .hero {
     background: linear-gradient(140deg, #0f2544 0%, #1e3a5f 40%, #1a56db 100%);
-    padding: 2.5rem 2rem 3.5rem;
+    padding: 2rem 2rem 3rem;
     position: relative;
     overflow: hidden;
   }
@@ -53,235 +41,142 @@
     clip-path: ellipse(55% 100% at 50% 100%);
   }
   .hero-inner {
-    max-width: 900px;
+    max-width: 600px;
     margin: 0 auto;
     display: flex;
     align-items: center;
-    gap: 1.2rem;
+    gap: 1rem;
   }
   .hero-badge {
     background: rgba(255,255,255,0.12);
     border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 16px;
-    padding: 1rem;
-    font-size: 2.2rem;
-    backdrop-filter: blur(10px);
+    border-radius: 14px;
+    padding: 0.9rem;
+    font-size: 2rem;
     flex-shrink: 0;
   }
-  .hero-text h1 {
+  .hero-inner h1 {
     color: white;
-    font-size: clamp(1.4rem, 5vw, 2rem);
+    font-size: clamp(1.5rem, 5vw, 2rem);
     font-weight: 900;
     letter-spacing: 0.04em;
-    line-height: 1.2;
-  }
-  .hero-text .sub {
-    color: rgba(255,255,255,0.65);
-    font-size: 0.9rem;
-    margin-top: 0.4rem;
   }
   .server-status {
     margin-left: auto;
     background: rgba(255,255,255,0.1);
     border: 1px solid rgba(255,255,255,0.2);
     border-radius: 999px;
-    padding: 0.4rem 1rem;
+    padding: 0.35rem 0.9rem;
     color: rgba(255,255,255,0.8);
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     display: flex;
     align-items: center;
     gap: 0.4rem;
     white-space: nowrap;
     flex-shrink: 0;
   }
-  .status-dot {
+  .dot {
     width: 8px; height: 8px;
     border-radius: 50%;
     background: #86efac;
     animation: pulse 2s infinite;
   }
-  .status-dot.offline { background: #fca5a5; animation: none; }
-  @keyframes pulse {
-    0%,100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
+  .dot.offline { background: #fca5a5; animation: none; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-  /* ── MAIN ── */
   .main {
-    max-width: 900px;
+    max-width: 600px;
     margin: 0 auto;
-    padding: 2rem 1.5rem 4rem;
-  }
-
-  /* ── SECTION TITLE ── */
-  .section-label {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--text-2);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    margin-bottom: 1rem;
+    padding: 2rem 1.2rem 4rem;
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .section-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
-
-  /* ── APP GRID ── */
-  .app-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    flex-direction: column;
     gap: 1rem;
-    margin-bottom: 2rem;
   }
 
   .app-card {
     background: var(--surface);
     border-radius: var(--radius);
-    padding: 1.4rem 1.5rem;
+    padding: 1.6rem 1.5rem;
     border: 2px solid transparent;
     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    cursor: pointer;
     text-decoration: none;
     color: inherit;
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.2rem;
     position: relative;
     overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
   }
-  .app-card:hover {
-    transform: translateY(-3px);
+  .app-card:hover, .app-card:active {
+    transform: translateY(-2px);
     box-shadow: var(--shadow);
   }
-  .app-card.locked { cursor: default; }
-  .app-card.locked:hover { transform: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-
   .app-card::before {
     content: '';
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 4px;
     border-radius: 2px 0 0 2px;
-    background: currentColor;
     opacity: 0.3;
+    transition: opacity 0.18s;
   }
-  .app-card:hover::before { opacity: 1; }
+  .app-card:hover::before, .app-card:active::before { opacity: 1; }
 
   .app-card.blue { color: var(--blue); }
-  .app-card.blue:hover { border-color: var(--blue); }
-  .app-card.green { color: var(--green); }
-  .app-card.green:hover { border-color: var(--green); }
-  .app-card.amber { color: var(--amber); }
-  .app-card.amber:hover { border-color: var(--amber); }
+  .app-card.blue::before { background: var(--blue); }
+  .app-card.blue:hover, .app-card.blue:active { border-color: var(--blue); }
   .app-card.red { color: var(--red); }
-  .app-card.red:hover { border-color: var(--red); }
-  .app-card.purple { color: var(--purple); }
-  .app-card.purple:hover { border-color: var(--purple); }
-  .app-card.gray { color: var(--gray); }
+  .app-card.red::before { background: var(--red); }
+  .app-card.red:hover, .app-card.red:active { border-color: var(--red); }
 
   .app-icon {
-    width: 52px; height: 52px;
-    border-radius: 13px;
+    width: 58px; height: 58px;
+    border-radius: 14px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.6rem;
+    font-size: 1.8rem;
     flex-shrink: 0;
-    background: currentColor;
-    opacity: 1;
   }
   .app-card.blue .app-icon { background: var(--blue-light); }
-  .app-card.green .app-icon { background: var(--green-light); }
-  .app-card.amber .app-icon { background: var(--amber-light); }
   .app-card.red .app-icon { background: var(--red-light); }
-  .app-card.purple .app-icon { background: var(--purple-light); }
-  .app-card.gray .app-icon { background: #f3f4f6; }
 
-  .app-info { flex: 1; min-width: 0; }
-  .app-name {
-    font-size: 1.05rem;
-    font-weight: 800;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .app-desc {
-    font-size: 0.82rem;
-    color: var(--text-2);
-    margin-top: 0.2rem;
-  }
+  .app-info { flex: 1; }
+  .app-name { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+  .app-desc { font-size: 0.83rem; color: var(--text-2); margin-top: 0.25rem; }
   .app-badge {
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 0.2rem 0.6rem;
-    border-radius: 999px;
-    background: currentColor;
-    margin-top: 0.4rem;
-    display: inline-block;
+    font-size: 0.7rem; font-weight: 700;
+    padding: 0.2rem 0.6rem; border-radius: 999px;
+    margin-top: 0.45rem; display: inline-block;
   }
   .app-card.blue .app-badge { background: var(--blue-light); color: var(--blue); }
-  .app-card.green .app-badge { background: var(--green-light); color: var(--green); }
-  .app-card.amber .app-badge { background: var(--amber-light); color: var(--amber); }
   .app-card.red .app-badge { background: var(--red-light); color: var(--red); }
-  .app-card.purple .app-badge { background: var(--purple-light); color: var(--purple); }
-  .app-card.gray .app-badge { background: #f3f4f6; color: var(--gray); }
 
-  .app-arrow {
-    color: #cbd5e1;
-    font-size: 1.1rem;
-    flex-shrink: 0;
-  }
-  .app-card:hover .app-arrow { color: currentColor; }
+  .app-arrow { color: #cbd5e1; font-size: 1.2rem; flex-shrink: 0; transition: color 0.18s; }
+  .app-card:hover .app-arrow, .app-card:active .app-arrow { color: currentColor; }
 
-  /* 鎖定樣式 */
-  .lock-icon {
-    position: absolute;
-    top: 0.8rem; right: 0.8rem;
-    font-size: 0.9rem;
-    opacity: 0.4;
-  }
-  .app-card.locked .app-name { opacity: 0.5; }
-  .app-card.locked .app-desc { opacity: 0.4; }
-
-  /* ── 密碼視窗 ── */
   .overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(15,25,45,0.6);
-    z-index: 100;
+    display: none; position: fixed; inset: 0;
+    background: rgba(15,25,45,0.6); z-index: 100;
     backdrop-filter: blur(6px);
-    align-items: center;
-    justify-content: center;
+    align-items: center; justify-content: center;
   }
   .overlay.active { display: flex; }
   .dialog {
-    background: white;
-    border-radius: 18px;
-    padding: 2rem;
+    background: white; border-radius: 18px; padding: 2rem;
     width: min(380px, 90vw);
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
     animation: pop 0.25s cubic-bezier(0.34,1.56,0.64,1);
   }
-  @keyframes pop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes pop { from{transform:scale(0.9);opacity:0} to{transform:scale(1);opacity:1} }
   .dialog h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.4rem; }
   .dialog p { font-size: 0.85rem; color: var(--text-2); margin-bottom: 1.2rem; }
   .dialog input {
-    width: 100%;
-    padding: 0.7rem 1rem;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    font-size: 1rem;
-    font-family: inherit;
-    margin-bottom: 0.8rem;
-    outline: none;
-    transition: border-color 0.2s;
+    width: 100%; padding: 0.7rem 1rem;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 1rem; font-family: inherit; margin-bottom: 0.8rem;
+    outline: none; transition: border-color 0.2s;
   }
   .dialog input:focus { border-color: var(--blue); }
   .dialog-error { color: var(--red); font-size: 0.82rem; margin-bottom: 0.8rem; min-height: 1.2em; }
@@ -292,19 +187,12 @@
   .btn-primary { background: var(--blue); color: white; }
   .btn-primary:hover { background: #1d4ed8; }
 
-  /* ── 底部版本資訊 ── */
-  .footer {
-    text-align: center;
-    padding: 1.5rem;
-    font-size: 0.8rem;
-    color: #94a3b8;
-  }
-
-  @media (max-width: 520px) {
+  @media (max-width: 480px) {
     .hero { padding: 1.5rem 1rem 2.5rem; }
     .server-status { display: none; }
-    .main { padding: 1.5rem 0.8rem 3rem; }
-    .app-grid { grid-template-columns: 1fr; }
+    .main { padding: 1.2rem 0.8rem 3rem; }
+    .app-card { padding: 1.4rem 1.2rem; }
+    .app-icon { width: 52px; height: 52px; font-size: 1.6rem; }
   }
 </style>
 </head>
@@ -312,13 +200,10 @@
 
 <header class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">🏛️</div>
-    <div class="hero-text">
-      <h1>行政執行署桃園分署</h1>
-      <div class="sub">辦公室整合系統 ── 請選擇您要使用的功能</div>
-    </div>
-    <div class="server-status" id="serverStatus">
-      <div class="status-dot" id="statusDot"></div>
+    <div class="hero-badge">🍱</div>
+    <h1>點餐小助手</h1>
+    <div class="server-status">
+      <div class="dot" id="statusDot"></div>
       <span id="statusText">連線中...</span>
     </div>
   </div>
@@ -326,63 +211,28 @@
 
 <main class="main">
 
-  <!-- 一般功能 -->
-  <div class="section-label">📂 一般功能（全體同仁）</div>
-  <div class="app-grid">
-
-    <a class="app-card amber" href="forms.html">
-      <div class="app-icon">📋</div>
-      <div class="app-info">
-        <div class="app-name">助理常用申請表</div>
-        <div class="app-desc">長假單、未刷卡、加班申請等</div>
-        <span class="app-badge">5 張表單</span>
-      </div>
-      <div class="app-arrow">→</div>
-    </a>
-
-    <a class="app-card blue" href="order.html">
-      <div class="app-icon">🍱</div>
-      <div class="app-info">
-        <div class="app-name">點餐系統</div>
-        <div class="app-desc">查看開團、送出訂單、查詢記錄</div>
-        <span class="app-badge">個人版</span>
-      </div>
-      <div class="app-arrow">→</div>
-    </a>
-
-
-  </div>
-
-  <!-- 管理功能 -->
-  <div class="section-label">🔐 管理功能（需要密碼）</div>
-  <div class="app-grid">
-
-    <a class="app-card red" href="order-admin.html" style="text-decoration:none">
-      <div class="app-icon">🍔</div>
-      <div class="app-info">
-        <div class="app-name">點餐管理端</div>
-        <div class="app-desc">開團管理、查看所有訂單、結帳</div>
-        <span class="app-badge">管理員專用</span>
-      </div>
-      <div class="app-arrow">→</div>
-    </a>
-
-    <div class="app-card gray locked">
-      <div class="app-icon">🚧</div>
-      <div class="app-info">
-        <div class="app-name">其他功能</div>
-        <div class="app-desc">陸續建構中，敬請期待</div>
-        <span class="app-badge">開發中</span>
-      </div>
+  <a class="app-card blue" href="order.html">
+    <div class="app-icon">🍱</div>
+    <div class="app-info">
+      <div class="app-name">點餐系統</div>
+      <div class="app-desc">查看開團、送出訂單、查詢記錄</div>
+      <span class="app-badge">個人版</span>
     </div>
+    <div class="app-arrow">→</div>
+  </a>
 
-  </div>
+  <a class="app-card red" href="order-admin.html">
+    <div class="app-icon">🍔</div>
+    <div class="app-info">
+      <div class="app-name">點餐管理端</div>
+      <div class="app-desc">開團管理、查看所有訂單、結帳</div>
+      <span class="app-badge">管理員專用</span>
+    </div>
+    <div class="app-arrow">→</div>
+  </a>
 
 </main>
 
-<div class="footer" id="versionInfo">系統載入中...</div>
-
-<!-- 密碼驗證對話框 -->
 <div class="overlay" id="authOverlay">
   <div class="dialog">
     <h3 id="authTitle">🔐 身分驗證</h3>
@@ -397,61 +247,28 @@
 </div>
 
 <script>
-// ── 伺服器 URL（請依實際 IP 修改）──
-// 自動偵測伺服器位址：透過伺服器開啟時自動用同一個來源，不需手動改 IP
 const SERVER = 'https://lunch-order-173311611761.asia-east1.run.app';
 
-// ── 伺服器狀態檢查 ──
 async function checkServer() {
   try {
     const res = await fetch(`${SERVER}/api/health`, { signal: AbortSignal.timeout(5000) });
     const data = await res.json();
-    document.getElementById('statusDot').className = 'status-dot';
+    document.getElementById('statusDot').className = 'dot';
     document.getElementById('statusText').textContent = `伺服器正常 ${data.time||''}`;
-  } catch(e) {
-    document.getElementById('statusDot').className = 'status-dot offline';
+  } catch {
+    document.getElementById('statusDot').className = 'dot offline';
     document.getElementById('statusText').textContent = '伺服器無回應';
   }
 }
 
-// ── 版本資訊（直接顯示，不需額外請求）──
-function loadVersionInfo() {
-  document.getElementById('versionInfo').textContent = `服務主機：${SERVER}`;
-}
-
-// ── 密碼驗證 ──
-let _pendingRole = '';
-let _pendingUrl = '';
-
-const roleLabels = {
-  admin: { title: '🍔 點餐管理端', desc: '僅供點餐管理員使用，請輸入管理密碼。' },
-};
-
-function openWithAuth(role, url) {
-  const cfg = roleLabels[role];
-  if(!cfg) { window.location.href = url; return; }
-  _pendingRole = role;
-  _pendingUrl = url;
-  document.getElementById('authTitle').textContent = cfg.title;
-  document.getElementById('authDesc').textContent = cfg.desc;
-  document.getElementById('authPwd').value = '';
-  document.getElementById('authError').textContent = '';
-  document.getElementById('authOverlay').classList.add('active');
-  setTimeout(()=>document.getElementById('authPwd').focus(), 100);
-}
-
+let _pendingRole = '', _pendingUrl = '';
 function closeAuth() {
   document.getElementById('authOverlay').classList.remove('active');
-  _pendingRole = '';
-  _pendingUrl = '';
 }
-
 async function doAuth() {
   const pwd = document.getElementById('authPwd').value;
   const errEl = document.getElementById('authError');
   errEl.textContent = '';
-
-  // 先嘗試後端驗證，如後端不通則用前端備援
   try {
     const res = await fetch(`${SERVER}/api/auth`, {
       method: 'POST',
@@ -459,29 +276,17 @@ async function doAuth() {
       body: JSON.stringify({ role: _pendingRole, password: pwd }),
       signal: AbortSignal.timeout(5000)
     });
-    if(res.ok) {
-      closeAuth();
-      // 儲存驗證 token，目標頁面可直接跳過密碼牆
-      window.location.href = _pendingUrl;
-    } else {
-      errEl.textContent = '❌ 密碼不正確，請再試一次。';
-      document.getElementById('authPwd').select();
-    }
+    if (res.ok) { closeAuth(); window.location.href = _pendingUrl; }
+    else { errEl.textContent = '❌ 密碼不正確，請再試一次。'; }
   } catch {
-    // 伺服器無回應時，顯示提示
     errEl.textContent = '⚠️ 無法連線至伺服器，請確認網路或聯繫管理員。';
   }
 }
-
-// 點擊背景關閉
-document.getElementById('authOverlay').addEventListener('click', function(e){
-  if(e.target===this) closeAuth();
+document.getElementById('authOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeAuth();
 });
 
-// ── 初始化 ──
 checkServer();
-loadVersionInfo();
-// 每 30 秒更新一次連線狀態
 setInterval(checkServer, 30000);
 </script>
 </body>
