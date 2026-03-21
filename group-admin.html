@@ -311,6 +311,42 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
   </div>
 </div>
 
+<!-- 修改開團時間 Modal -->
+<div class="overlay" id="mod-eg">
+  <div class="dialog">
+    <h3 style="margin-top:0;color:var(--navy);font-size:1.1rem;margin-bottom:1rem">修改日期與時間</h3>
+    <input type="hidden" id="eg-id">
+    <div style="margin-bottom:1rem"><label style="display:block;font-size:0.85rem;color:var(--text2);margin-bottom:0.3rem;font-weight:700">取餐日</label><input type="date" id="eg-tdate" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;font-family:inherit;background:#f8fafc"></div>
+    <div style="margin-bottom:1rem"><label style="display:block;font-size:0.85rem;color:var(--text2);margin-bottom:0.3rem;font-weight:700">收單日期</label><input type="date" id="eg-ddate" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;font-family:inherit;background:#f8fafc"></div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem">
+      <div style="flex:1"><label style="display:block;font-size:0.85rem;color:var(--text2);margin-bottom:0.3rem;font-weight:700">收單時</label><input type="number" id="eg-dh" min="0" max="23" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;font-family:inherit;background:#f8fafc"></div>
+      <div style="flex:1"><label style="display:block;font-size:0.85rem;color:var(--text2);margin-bottom:0.3rem;font-weight:700">收單分</label><input type="number" id="eg-dm" min="0" max="59" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;font-family:inherit;background:#f8fafc"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:0.5rem">
+      <button class="btn btn-ghost" onclick="document.getElementById('mod-eg').classList.remove('active')">取消</button>
+      <button class="btn btn-primary" onclick="saveEg()">💾 儲存修改</button>
+    </div>
+  </div>
+</div>
+
+<!-- 修改訂單 Modal -->
+<div class="overlay" id="mod-eo">
+  <div class="dialog">
+    <h3 style="margin-top:0;color:var(--navy);font-size:1.1rem;margin-bottom:1rem">修改訂單 <span id="eo-user" style="font-size:0.85rem;color:var(--text3);font-weight:normal"></span></h3>
+    <input type="hidden" id="eo-id">
+    <div style="margin-bottom:1rem"><label style="display:block;font-size:0.85rem;color:var(--text2);margin-bottom:0.3rem;font-weight:700">品名</label><select id="eo-itemname" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;font-family:inherit;background:#f8fafc"></select></div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem">
+      <div style="flex:1"><label style="display:block;font-size:0.85rem;color:var(--text2);margin-bottom:0.3rem;font-weight:700">數量</label><input type="number" id="eo-qty" min="1" max="99" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;font-family:inherit;background:#f8fafc"></div>
+      <div style="flex:2"><label style="display:block;font-size:0.85rem;color:var(--text2);margin-bottom:0.3rem;font-weight:700">客製化/備註</label><input type="text" id="eo-opts" placeholder="如: 半飯 半糖" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;font-family:inherit;background:#f8fafc"></div>
+    </div>
+    <div style="margin-bottom:1.5rem"><label style="display:block;font-size:0.85rem;color:var(--text2);margin-bottom:0.3rem;font-weight:700">付款方式</label><select id="eo-pay" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;font-family:inherit;background:#f8fafc"><option>現金</option><option>LINE Pay</option></select></div>
+    <div style="display:flex;justify-content:flex-end;gap:0.5rem">
+      <button class="btn btn-ghost" onclick="document.getElementById('mod-eo').classList.remove('active')">取消</button>
+      <button class="btn btn-primary" onclick="saveEo()">💾 儲存修改</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SERVER = 'https://lunch-order-173311611761.asia-east1.run.app';
 let uName = localStorage.getItem('group_leader_name') || '';
@@ -551,6 +587,12 @@ async function submitGroup() {
 }
 
 // ── 開團管理 ──
+function getWdStr(dateStr) {
+  const wd = ['日','一','二','三','四','五','六'];
+  const d = new Date(dateStr);
+  return isNaN(d) ? '' : ` (${wd[d.getDay()]})`;
+}
+
 function renderMyGroups() {
   const tb = document.getElementById('tbody-my-groups');
   tb.innerHTML = '';
@@ -563,8 +605,18 @@ function renderMyGroups() {
       selectedGroupId = g.id;
       renderGroupOrders();
     };
+    tr.ondblclick = function() { editGroupDbl(g.id); };
+    tr.title = "雙擊修改時間";
     if (g.id === selectedGroupId) tr.classList.add('selected');
-    tr.innerHTML = `<td>${g.store}</td><td>${g.target_date}</td><td>${g.deadline}</td>`;
+    
+    let tDateStr = g.target_date ? g.target_date + getWdStr(g.target_date) : '';
+    let dDateStr = g.deadline || '';
+    if (g.deadline) {
+       const parts = g.deadline.split(' ');
+       dDateStr = parts[0] + getWdStr(parts[0]) + (parts[1] ? ' '+parts[1] : '');
+    }
+    
+    tr.innerHTML = `<td>${g.store}</td><td>${tDateStr}</td><td>${dDateStr}</td>`;
     tb.appendChild(tr);
   });
 }
@@ -579,19 +631,24 @@ function renderGroupOrders() {
   }
   btnShare.disabled=false; btnBill.disabled=false; btnDel.disabled=false;
   
-  const gOrders = allOrders.map(o => o[1]).filter(o => o.group_id === selectedGroupId);
+  // Keep the pair structure to access order_id
+  const gOrdersPair = allOrders.filter(o => o[1].group_id === selectedGroupId);
   const tb = document.getElementById('tbody-group-orders');
   tb.innerHTML = '';
-  if(!gOrders.length) {
+  if(!gOrdersPair.length) {
     tb.innerHTML = '<tr class="empty-row"><td colspan="5">目前尚無人下單</td></tr>';
     document.getElementById('summary-section').style.display='none';
     return;
   }
 
   let tot = 0;
-  gOrders.forEach(o => {
+  gOrdersPair.forEach(pair => {
+    let oid = pair[0];
+    let o = pair[1];
     let sub = parseInt(o.qty)*parseInt(o.price); tot+=sub;
     const tr = document.createElement('tr');
+    tr.title = "雙擊修改訂單";
+    tr.ondblclick = () => editOrderDbl(oid);
     tr.innerHTML = `<td>${o.user_name}</td><td>${o.item_name}</td><td>${o.qty}</td><td>${o.pay_method}</td><td>$${sub}</td>`;
     tb.appendChild(tr);
   });
@@ -599,7 +656,123 @@ function renderGroupOrders() {
   const sumSec = document.getElementById('summary-section');
   const sumTxt = document.getElementById('summary-text');
   sumSec.style.display = 'block';
-  sumTxt.innerHTML = `本團目前共 <strong>${gOrders.length}</strong> 筆品項記錄，總金額結算為 <strong>$${tot}</strong> 元。`;
+  sumTxt.innerHTML = `本團目前共 <strong>${gOrdersPair.length}</strong> 筆品項記錄，總金額結算為 <strong>$${tot}</strong> 元。`;
+}
+
+// ── 雙擊編輯開團時間功能 ──
+function editGroupDbl(gid) {
+  const g = myGroups.find(x => x.id === gid);
+  if(!g) return;
+  document.getElementById('eg-id').value = g.id;
+  document.getElementById('eg-tdate').value = g.target_date || '';
+  
+  if (g.deadline) {
+    const parts = g.deadline.split(' ');
+    document.getElementById('eg-ddate').value = parts[0] || '';
+    if (parts[1]) {
+      const hm = parts[1].split(':');
+      document.getElementById('eg-dh').value = hm[0] || '12';
+      document.getElementById('eg-dm').value = hm[1] || '00';
+    }
+  } else {
+    document.getElementById('eg-ddate').value = g.target_date || '';
+    document.getElementById('eg-dh').value = '12';
+    document.getElementById('eg-dm').value = '00';
+  }
+  document.getElementById('mod-eg').classList.add('active');
+}
+
+async function saveEg() {
+  const gid = document.getElementById('eg-id').value;
+  const targetDate = document.getElementById('eg-tdate').value;
+  const dDate = document.getElementById('eg-ddate').value;
+  const dH = document.getElementById('eg-dh').value.padStart(2, '0');
+  const dM = document.getElementById('eg-dm').value.padStart(2, '0');
+  
+  if (!targetDate || !dDate || !dH || !dM) return alert("請填寫完整日期與時間");
+  
+  const dStr = `${dDate}T${dH}:${dM}:00`;
+  if (new Date(dStr) <= new Date()) return alert("收單時間不可設定在過去");
+  if (targetDate < dDate) return alert("取餐日不能早於收單日");
+
+  const idx = myGroups.findIndex(x => x.id === gid);
+  if (idx < 0) return;
+  
+  myGroups[idx].target_date = targetDate;
+  myGroups[idx].deadline = `${dDate} ${dH}:${dM}`;
+  
+  try {
+    const res = await fetch(`${SERVER}/api/groups`, {
+      method: "POST", headers: { "Content-Type":"application/json", "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) },
+      body: JSON.stringify(myGroups)
+    });
+    if(!res.ok) throw new Error(await res.text());
+    document.getElementById('mod-eg').classList.remove('active');
+    renderMyGroups();
+  } catch(e) { alert("修改失敗：" + e.message); }
+}
+
+// ── 雙擊編輯訂單功能 ──
+function editOrderDbl(oid) {
+  const oPair = allOrders.find(x => x[0] === oid);
+  if(!oPair) return;
+  const o = oPair[1];
+  const g = myGroups.find(x => x.id === o.group_id);
+  
+  document.getElementById('eo-id').value = oid;
+  document.getElementById('eo-user').textContent = `(${o.user_name})`;
+  
+  let storeItems = [];
+  if (g) {
+    const storeData = (allStores['_admin_'] && allStores['_admin_'][g.store]) || (myStores && myStores[g.store]);
+    if (storeData && storeData.items) {
+      if (g.allowed && g.allowed.length > 0) storeItems = storeData.items.filter(it => g.allowed.includes(it.name));
+      else storeItems = storeData.items;
+    }
+  }
+  
+  const sel = document.getElementById('eo-itemname');
+  sel.innerHTML = storeItems.map(it => `<option value="${it.name}|${it.price}">${it.name} ($${it.price})</option>`).join('');
+  
+  const matchOpt = [...sel.options].find(opt => opt.value.startsWith(o.item_name + '|'));
+  if (matchOpt) matchOpt.selected = true;
+  else sel.innerHTML += `<option value="${o.item_name}|${o.price}" selected>${o.item_name} ($${o.price})</option>`;
+  
+  document.getElementById('eo-qty').value = o.qty || 1;
+  document.getElementById('eo-opts').value = o.options || '';
+  document.getElementById('eo-pay').value = o.pay_method || '現金';
+  
+  document.getElementById('mod-eo').classList.add('active');
+}
+
+async function saveEo() {
+  const oid = document.getElementById('eo-id').value;
+  const oPair = allOrders.find(x => x[0] === oid);
+  if(!oPair) return;
+  const order = oPair[1];
+  
+  const itemVal = document.getElementById('eo-itemname').value;
+  if (!itemVal) return alert("請選擇品名");
+  const [inm, ipr] = itemVal.split('|');
+  const qty = parseInt(document.getElementById('eo-qty').value) || 1;
+  
+  order.item_name = inm;
+  order.price = parseInt(ipr) || 0;
+  order.qty = qty;
+  order.options = document.getElementById('eo-opts').value.trim();
+  order.pay_method = document.getElementById('eo-pay').value;
+  order.order_id = oid;
+  
+  try {
+    const res = await fetch(`${SERVER}/api/orders`, {
+      method: "POST", headers: { "Content-Type":"application/json", "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) },
+      body: JSON.stringify(order)
+    });
+    if(!res.ok) throw new Error(await res.text());
+    document.getElementById('mod-eo').classList.remove('active');
+    await loadAllData();
+    renderGroupOrders();
+  } catch(e) { alert("儲存訂單失敗：" + e.message); }
 }
 
 async function deleteSelectedGroup() {
