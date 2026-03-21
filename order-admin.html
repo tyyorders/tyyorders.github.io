@@ -1540,12 +1540,14 @@ function renderCheckoutGroups() {
     tbody.innerHTML = '<tr class="empty-row"><td colspan="3">目前無開團</td></tr>';
     return;
   }
-  tbody.innerHTML = activeGroups.map(g=>`
+  tbody.innerHTML = activeGroups.map(g=>{
+    const creatorTag = g.creator ? ` <span style="color:#1d4ed8;font-size:0.8rem">(${g.creator}揪團)</span>` : '';
+    return `
     <tr data-gid="${g.id}" onclick="loadCheckout('${g.id}',this)">
-      <td><strong>${g.store}</strong></td>
+      <td><strong>${g.store}${creatorTag}</strong></td>
       <td style="white-space:nowrap">${fmtDateWD(g.target_date)}</td>
       <td style="white-space:nowrap;font-size:.82rem">${fmtDeadline(g.deadline)}</td>
-    </tr>`).join('');
+    </tr>`}).join('');
 }
 
 async function loadCheckout(gid, row) {
@@ -1571,13 +1573,8 @@ async function loadCheckout(gid, row) {
   
   tbody.innerHTML = orders.map(([fname, o])=>{
     const sub = parseInt(o.qty||1)*parseInt(o.price||0); total+=sub;
-    // 若有 group_id 為揪團訂單，加上標籤
-    const gInfo = o.group_id ? groupMap[String(o.group_id)] : null;
-    const groupTag = gInfo 
-      ? `<span style="display:inline-block;margin-left:4px;padding:1px 5px;font-size:0.7rem;background:#dbeafe;color:#1d4ed8;border-radius:9999px;font-weight:700;vertical-align:middle" title="揪團主：${gInfo.creator||''}">揪團</span>` 
-      : '';
     return `<tr data-fname="${fname}" ondblclick="openEditOrderModal('${fname}')">
-      <td>${o.user_name}${groupTag}</td><td>${o.item_name}</td>
+      <td>${o.user_name}</td><td>${o.item_name}</td>
       <td style="text-align:center">${o.qty}</td><td>${o.pay_method||'現金'}</td>
       <td style="font-size:.8rem;color:var(--text2)">${o.options||'—'}</td>
       <td style="text-align:right;font-weight:700;color:var(--red)">$${sub}</td>

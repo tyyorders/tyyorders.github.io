@@ -196,6 +196,16 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
         <button class="btn btn-primary btn-lg" onclick="submitGroup()">🚀 發布並產生連結</button>
       </div>
     </div>
+    
+    <!-- 許願池審核清單 -->
+    <div class="card" style="max-width:600px;margin:1rem auto 0">
+      <div class="card-header"><span class="card-title">✨ 許願池審核清單</span></div>
+      <div class="card-body" style="padding:1rem">
+        <div id="wishes-container" style="display:flex;flex-direction:column;gap:1rem">
+          <div style="text-align:center;color:var(--text3);font-size:0.85rem">載入中...</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- 我的開團管理 -->
@@ -509,6 +519,8 @@ async function loadAllData() {
     const gl = await gr.json();
     myGroups = gl.filter(g => g.creator === uName);
     renderMyGroups();
+
+    await loadWishes();
 
     const or = await fetch(`${SERVER}/api/orders`);
     allOrders = await or.json();
@@ -936,90 +948,27 @@ async function shareAndCopyText() {
   }
 }
 
-function exportCsv() {
-  const g = myGroups.find(x => x.id === selectedGroupId);
-  if (!g) return alert("請先選取一筆開團");
-  const gOrders = allOrders.map(o => o[1]).filter(o => o.group_id === selectedGroupId);
-  if (!gOrders.length) return alert("此團尚無訂單");
-  
-  // === 建立對帳單 ===
-  const storeName = g.store || '';
-  let rows = [];
-  
-  // 標題列
-  rows.push([`${storeName} 訂單明細`]);
-  rows.push(['編號','訂購人','品名','數量','單價','小計','備註/客製選項','付款方式','人別小計']);
-  
-  let totalLp = 0, totalCash = 0;
-  let idx = 1;
-  
-  // 按訂購人分組
-  const userMap = {};
-  gOrders.forEach(o => {
-    const uname = o.user_name || '未知';
-    if (!userMap[uname]) userMap[uname] = [];
-    userMap[uname].push(o);
-  });
-  
-  // 欄位輸出
-  for (const [uname, orders] of Object.entries(userMap)) {
-    let userTotal = 0;
-    const needSubtotal = orders.length > 1;
-    orders.forEach((o, i) => {
-      const qty = parseInt(o.qty) || 1;
-      const price = parseInt(o.price) || 0;
-      const sub = qty * price;
-      userTotal += sub;
-      if (o.pay_method === 'LINE Pay') totalLp += sub;
-      else totalCash += sub;
-      
-      const subtotalCell = (!needSubtotal && i === 0) ? '' : (i === orders.length - 1 ? `$${userTotal}` : '');
-      rows.push([idx++, uname, o.item_name||'', qty, price, `$${sub}`, o.options||'', o.pay_method||'現金', subtotalCell]);
-    });
-    // 多筆才加小計分隔列
-    if (needSubtotal) {
-      rows.push(['','','','','','','','個人小計：',`$${userTotal}`]);
-      rows.push([]); // 空白行
+async function exportCsv() {
+  if (!selectedGroupId) return alert("請先選取一筆開團");
+  try {
+    // 呼叫與管理員相同的 Excel 匯出 API，集團主也能享有一致的個人小計與格式
+    const res = await fetch(`${SERVER}/api/export_excel/${selectedGroupId}`);
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({detail:'匯出失敗'}));
+      throw new Error(err.detail || '匯出失敗');
     }
-  }
-  
-  // 統計三行
-  rows.push([]);
-  rows.push(['','','','','','','LINE Pay 應收：', `$${totalLp}`]);
-  rows.push(['','','','','','','現金應收：', `$${totalCash}`]);
-  rows.push(['','','','','','','合計本次訂單：', `$${totalLp+totalCash}`]);
-  
-  // === 品項統計總表 ===
-  rows.push([]);
-  rows.push(['【品項與客製化統計總表】']);
-  rows.push(['品名','客製選項與備註明細','該品項總數量']);
-  
-  const itemSummary = {};
-  gOrders.forEach(o => {
-    const name = o.item_name || '';
-    const opts = (o.options||'').trim() || '正常/無備註';
-    const qty = parseInt(o.qty) || 1;
-    if (!itemSummary[name]) itemSummary[name] = { total: 0, details: {} };
-    itemSummary[name].total += qty;
-    itemSummary[name].details[opts] = (itemSummary[name].details[opts] || 0) + qty;
-  });
-  for (const [name, info] of Object.entries(itemSummary)) {
-    const detStr = Object.entries(info.details).map(([k,v]) => `${k}：${v}份`).join('，');
-    rows.push([name, detStr, `共 ${info.total} 份`]);
-  }
-  
-  // === 轉換 CSV ===
-  const csvContent = rows.map(row => 
-    row.map(cell => `"${String(cell ?? '').replace(/"/g,'""')}"`).join(',')
-  ).join('\n');
-  
-  const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${storeName}_請款明細_${new Date().toLocaleDateString('zh-TW')}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const cd = res.headers.get('Content-Disposition')||'';
+    const nm = cd.match(/filename\*=UTF-8''(.+)/);
+    // 預設檔名，若後端 Header 有提供即可擷取
+    a.download = nm ? decodeURIComponent(nm[1]) : `對帳單_${selectedGroupId}.xlsx`;
+    a.href = url; a.click();
+    setTimeout(()=>{ window.open(url,'_blank'); },300);
+    setTimeout(()=>URL.revokeObjectURL(url), 10000);
+    alert('Excel 對帳單已下載！');
+  } catch(e) { alert('匯出失敗：'+e.message); }
 }
 
 function generateShareText() {
@@ -1182,6 +1131,66 @@ async function saveMyStores() {
     loadStoreEditor(sn);
   } catch(e) { alert(e.message); }
 }
+
+// ── 許願池相關 ──
+let allWishes = [];
+async function loadWishes() {
+  const c = document.getElementById('wishes-container');
+  if(!c) return;
+  try {
+    const res = await fetch(`${SERVER}/api/wishes`);
+    if(res.ok) {
+      allWishes = await res.json();
+      renderWishes();
+    }
+  } catch(e) { console.error(e); }
+}
+
+function renderWishes() {
+  const c = document.getElementById('wishes-container');
+  if(!c) return;
+  // 只顯示 pending 狀態的許願
+  const pending = allWishes.filter(w => w.status === 'pending');
+  if(pending.length === 0) {
+    c.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:0.85rem;padding:1rem">目前無待審核的許願</div>';
+    return;
+  }
+  
+  c.innerHTML = pending.map(w => {
+    const typeLabel = w.wish_type==='exist' ? '<span style="background:#dbeafe;color:#1d4ed8;padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-right:4px">敲碗現有</span>' : '<span style="background:#fce7f3;color:#be185d;padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-right:4px">全新許願</span>';
+    const itemsStr = w.items && w.items.length ? w.items.map(i=>i.name).join('、') : '無指定品項';
+    return `
+      <div style="padding:1rem;border:1px solid var(--border);border-radius:8px;background:#f8fafc">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.5rem">
+          <div style="font-weight:700;color:var(--navy);font-size:1.05rem">${typeLabel}${w.store_name}</div>
+          <div style="font-size:0.75rem;color:var(--text3)">${w.created_at}</div>
+        </div>
+        <div style="font-size:0.85rem;color:var(--text2);margin-bottom:0.3rem">提案人：${w.user_name} | 分類：${w.category} | 期待品項：${itemsStr}</div>
+        <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:0.8rem">
+          <button class="btn btn-ghost btn-sm" onclick="reviewWish('${w.id}', 'rejected')">❌ 婉拒</button>
+          <button class="btn btn-primary btn-sm" onclick="reviewWish('${w.id}', 'approved')">✅ 同意並上架到私房菜單</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function reviewWish(wishId, status) {
+  if(!confirm(status==='approved' ? '確定要在您的「私房菜單」中新增此店家嗎？' : '確定婉拒此許願？')) return;
+  try {
+    const res = await fetch(`${SERVER}/api/wishes/${wishId}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) },
+      body: JSON.stringify({ status: status })
+    });
+    if(!res.ok) throw new Error(await res.text());
+    alert(status==='approved' ? '已同意並新增至私房菜單！\n您可以在「私房菜單維護」查看或修改。' : '已婉拒該許願。');
+    await loadAllData();
+  } catch(e) {
+    alert('操作失敗：' + e.message);
+  }
+}
+
 
 </script>
 </body>
