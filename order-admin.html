@@ -1566,10 +1566,18 @@ async function loadCheckout(gid, row) {
     return;
   }
   let total = 0;
+  const groupMap = {};
+  activeGroups.forEach(g => { groupMap[String(g.id)] = g; });
+  
   tbody.innerHTML = orders.map(([fname, o])=>{
     const sub = parseInt(o.qty||1)*parseInt(o.price||0); total+=sub;
+    // 若有 group_id 為揪團訂單，加上標籤
+    const gInfo = o.group_id ? groupMap[String(o.group_id)] : null;
+    const groupTag = gInfo 
+      ? `<span style="display:inline-block;margin-left:4px;padding:1px 5px;font-size:0.7rem;background:#dbeafe;color:#1d4ed8;border-radius:9999px;font-weight:700;vertical-align:middle" title="揪團主：${gInfo.creator||''}">揪團</span>` 
+      : '';
     return `<tr data-fname="${fname}" ondblclick="openEditOrderModal('${fname}')">
-      <td>${o.user_name}</td><td>${o.item_name}</td>
+      <td>${o.user_name}${groupTag}</td><td>${o.item_name}</td>
       <td style="text-align:center">${o.qty}</td><td>${o.pay_method||'現金'}</td>
       <td style="font-size:.8rem;color:var(--text2)">${o.options||'—'}</td>
       <td style="text-align:right;font-weight:700;color:var(--red)">$${sub}</td>

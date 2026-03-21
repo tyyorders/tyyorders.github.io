@@ -517,6 +517,23 @@ async function loadAllData() {
     const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
     document.getElementById('inp-target').value = todayStr;
     document.getElementById('inp-dead-date').value = todayStr;
+    
+    // ⭐ 自動歸檔「取餐日已過（今日之前）」的開團 → 靜默送入 admin_history
+    const expiredGroups = myGroups.filter(g => g.target_date && g.target_date < todayStr);
+    if (expiredGroups.length) {
+      const validGroups = myGroups.filter(g => !(g.target_date && g.target_date < todayStr));
+      try {
+        const ar = await fetch(`${SERVER}/api/groups`, {
+          method: "POST",
+          headers: { "Content-Type":"application/json", "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) },
+          body: JSON.stringify(validGroups)
+        });
+        if (ar.ok) {
+          myGroups = validGroups;
+          renderMyGroups();
+        }
+      } catch(archErr) { /* 自動歸檔失敗時靜默，不干擾使用者 */ }
+    }
   } catch(e) {
     alert("讀取資料失敗: " + e.message);
   }
@@ -858,14 +875,23 @@ async function saveEo() {
 
 async function deleteSelectedGroup() {
   if(!selectedGroupId) return;
-  if(!confirm("確定要刪除這筆開團紀錄嗎？若有人點餐也會被一併刪除。")) return;
+  const g = myGroups.find(x => x.id === selectedGroupId);
+  if(!confirm(`確定要「整團作廢」${g ? g.store : '此團'}嗎？\n作廢後訂單全部刪除，且不會記錄到歷史紀錄。`)) return;
+  
   const newArr = myGroups.filter(g => g.id !== selectedGroupId);
   try {
+    // 步驟1: 先刪除此團所有訂單
     const r1 = await fetch(`${SERVER}/api/orders/group/${selectedGroupId}`, {
        method: 'DELETE', headers: { "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) }
     });
     if(!r1.ok) throw new Error(await r1.text());
     
+    // 步驟2: 如果 admin_history 已有記錄，先刪掉 (防止歸檔殘留)
+    await fetch(`${SERVER}/api/admin_history/${selectedGroupId}`, {
+       method: 'DELETE', headers: { "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) }
+    }).catch(() => {}); // 找不到時靜默略過
+    
+    // 步驟3: 更新 groups 列表 (後端歸檔邏輯在這裡觸發，但我們提前刪掉 history 來阻止)
     const r2 = await fetch(`${SERVER}/api/groups`, {
       method:"POST", headers:{"Content-Type":"application/json","x-user-name": encodeURIComponent(uName),"x-user-pin": encodeURIComponent(uPin)},
       body:JSON.stringify(newArr)
@@ -912,22 +938,86 @@ async function shareAndCopyText() {
 
 function exportCsv() {
   const g = myGroups.find(x => x.id === selectedGroupId);
-  const gOrders = allOrders.map(o=>o[1]).filter(o=>o.group_id===selectedGroupId);
+  if (!g) return alert("請先選取一筆開團");
+  const gOrders = allOrders.map(o => o[1]).filter(o => o.group_id === selectedGroupId);
+  if (!gOrders.length) return alert("此團尚無訂單");
   
-  let csv = "訂購人,品名,客製選項,金額(單價x數量),付款方式\n";
-  let total = 0;
+  // === 建立對帳單 ===
+  const storeName = g.store || '';
+  let rows = [];
+  
+  // 標題列
+  rows.push([`${storeName} 訂單明細`]);
+  rows.push(['編號','訂購人','品名','數量','單價','小計','備註/客製選項','付款方式','人別小計']);
+  
+  let totalLp = 0, totalCash = 0;
+  let idx = 1;
+  
+  // 按訂購人分組
+  const userMap = {};
   gOrders.forEach(o => {
-    let sub = parseInt(o.qty)*parseInt(o.price);
-    total += sub;
-    csv += `"${o.user_name}","${o.item_name}","${o.options||''}","$${sub} (${o.price}x${o.qty})","${o.pay_method}"\n`;
+    const uname = o.user_name || '未知';
+    if (!userMap[uname]) userMap[uname] = [];
+    userMap[uname].push(o);
   });
-  csv += `\n,,,總計:,"${total}"\n`;
-
-  const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+  
+  // 欄位輸出
+  for (const [uname, orders] of Object.entries(userMap)) {
+    let userTotal = 0;
+    const needSubtotal = orders.length > 1;
+    orders.forEach((o, i) => {
+      const qty = parseInt(o.qty) || 1;
+      const price = parseInt(o.price) || 0;
+      const sub = qty * price;
+      userTotal += sub;
+      if (o.pay_method === 'LINE Pay') totalLp += sub;
+      else totalCash += sub;
+      
+      const subtotalCell = (!needSubtotal && i === 0) ? '' : (i === orders.length - 1 ? `$${userTotal}` : '');
+      rows.push([idx++, uname, o.item_name||'', qty, price, `$${sub}`, o.options||'', o.pay_method||'現金', subtotalCell]);
+    });
+    // 多筆才加小計分隔列
+    if (needSubtotal) {
+      rows.push(['','','','','','','','個人小計：',`$${userTotal}`]);
+      rows.push([]); // 空白行
+    }
+  }
+  
+  // 統計三行
+  rows.push([]);
+  rows.push(['','','','','','','LINE Pay 應收：', `$${totalLp}`]);
+  rows.push(['','','','','','','現金應收：', `$${totalCash}`]);
+  rows.push(['','','','','','','合計本次訂單：', `$${totalLp+totalCash}`]);
+  
+  // === 品項統計總表 ===
+  rows.push([]);
+  rows.push(['【品項與客製化統計總表】']);
+  rows.push(['品名','客製選項與備註明細','該品項總數量']);
+  
+  const itemSummary = {};
+  gOrders.forEach(o => {
+    const name = o.item_name || '';
+    const opts = (o.options||'').trim() || '正常/無備註';
+    const qty = parseInt(o.qty) || 1;
+    if (!itemSummary[name]) itemSummary[name] = { total: 0, details: {} };
+    itemSummary[name].total += qty;
+    itemSummary[name].details[opts] = (itemSummary[name].details[opts] || 0) + qty;
+  });
+  for (const [name, info] of Object.entries(itemSummary)) {
+    const detStr = Object.entries(info.details).map(([k,v]) => `${k}：${v}份`).join('，');
+    rows.push([name, detStr, `共 ${info.total} 份`]);
+  }
+  
+  // === 轉換 CSV ===
+  const csvContent = rows.map(row => 
+    row.map(cell => `"${String(cell ?? '').replace(/"/g,'""')}"`).join(',')
+  ).join('\n');
+  
+  const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${g.store}_請款明細.csv`;
+  a.download = `${storeName}_請款明細_${new Date().toLocaleDateString('zh-TW')}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
