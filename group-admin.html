@@ -61,6 +61,42 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
 .btn-lg{padding:.65rem 1.5rem;font-size:.95rem;width:100%}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 
+/* 品項勾選網格 (手機友善) */
+.item-check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.6rem;
+  padding: 0.8rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  max-height: 250px;
+  overflow-y: auto;
+}
+.item-check-grid label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  margin: 0;
+  transition: border-color 0.2s;
+}
+.item-check-grid label:hover {
+  border-color: #cbd5e1;
+}
+.item-check-grid input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+}
+
 .tbl-wrap{overflow-x:auto;border-radius:var(--rsm);border:1px solid var(--border)}
 .data-tbl{width:100%;border-collapse:collapse;font-size:.85rem}
 .data-tbl th{background:#f1f5fb;padding:.55rem .7rem;text-align:left;font-weight:800;font-size:.78rem;color:var(--text2);border-bottom:2px solid var(--border)}
@@ -134,10 +170,11 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
         </div>
         <div id="items-section" style="display:none" class="field">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-            <label style="margin:0">開放品項（至少選一項）</label>
+            <label style="margin:0">開放品項 <span style="font-size:.75rem;color:var(--text3);font-weight:normal">（至少選一項）</span></label>
             <button type="button" class="btn btn-ghost" style="font-size:.75rem;padding:.2rem .6rem" onclick="toggleAllItems()">全選/全清</button>
           </div>
-          <div id="items-checkboxes" style="display:flex;flex-wrap:wrap;gap:.5rem .8rem;padding:.5rem;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">
+          <div id="items-checkboxes" class="item-check-grid">
+            <!-- 動態載入 -->
           </div>
         </div>
         <div class="field">
@@ -376,9 +413,9 @@ function onStoreChange() {
 
   // 顯示品項勾選列表，預設全部勾選
   box.innerHTML = items.map((it, i) =>
-    `<label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;font-size:.85rem">
+    `<label>
       <input type="checkbox" class="item-chk" value="${it.name}" checked>
-      ${it.name} ($${it.price})
+      <div>${it.name}<br><span style="color:var(--text3);font-size:0.8rem">($${it.price})</span></div>
     </label>`
   ).join('');
   sec.style.display = 'block';
