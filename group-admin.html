@@ -49,9 +49,13 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
 
 .field{margin-bottom:.85rem}
 .field label{display:block;font-size:.8rem;font-weight:700;color:var(--text2);margin-bottom:.3rem}
-.field input,.field select{width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:.45rem .75rem;font-size:.88rem;outline:none;}
-.field-row{display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap}
+.field input,.field select{width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:.5rem .75rem;font-size:.9rem;outline:none;background:#fff;transition:border-color .15s;-webkit-appearance:none;appearance:none;}
+.field input[type="checkbox"]{-webkit-appearance:checkbox;appearance:checkbox;}
+.field-row{display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap}
 .field-row .field{margin-bottom:1rem;flex:1;min-width:120px}
+@media(max-width:500px){
+  .field-row .field{min-width:45%;flex:1 1 45%;max-width:none !important;}
+}
 
 .btn{display:inline-flex;align-items:center;gap:.35rem;padding:.45rem 1rem;border-radius:var(--rsm);font-size:.85rem;font-weight:700;cursor:pointer;border:none;transition:all .15s}
 .btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#15803d}
@@ -161,10 +165,10 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
         <div class="field-row">
           <div class="field"><label>取餐日</label><input type="date" id="inp-target"></div>
           <div class="field"><label>收單日期</label><input type="date" id="inp-dead-date"></div>
-          <div class="field" style="max-width:120px"><label>收單時</label>
+          <div class="field"><label>收單時</label>
             <select id="inp-h"><option>09</option><option selected>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option></select>
           </div>
-          <div class="field" style="max-width:120px"><label>收單分</label>
+          <div class="field"><label>收單分</label>
             <select id="inp-m"><option>00</option><option>15</option><option selected>30</option><option>45</option></select>
           </div>
         </div>

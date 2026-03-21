@@ -64,11 +64,15 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
 /* Form fields */
 .field{margin-bottom:.85rem}
 .field label{display:block;font-size:.8rem;font-weight:700;color:var(--text2);margin-bottom:.3rem}
-.field input,.field select,.field textarea{width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:.45rem .75rem;font-size:.88rem;font-family:inherit;outline:none;transition:border-color .15s}
+.field input,.field select,.field textarea{width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:.5rem .75rem;font-size:.9rem;font-family:inherit;outline:none;background:#fff;transition:border-color .15s;-webkit-appearance:none;appearance:none;}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue)}
+.field input[type="checkbox"]{-webkit-appearance:checkbox;appearance:checkbox;}
 .field textarea{resize:vertical;min-height:70px}
-.field-row{display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap}
-.field-row .field{margin-bottom:0;flex:1;min-width:80px}
+.field-row{display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap}
+.field-row .field{margin-bottom:1rem;flex:1;min-width:120px}
+@media(max-width:500px){
+  .field-row .field{min-width:45%;flex:1 1 45%;max-width:none !important;}
+}
 .checkbox-label{display:flex;align-items:center;gap:.5rem;font-size:.88rem;cursor:pointer;padding:.4rem 0}
 .checkbox-label input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--purple)}
 
@@ -226,7 +230,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
             <label>收單日期 *</label>
             <input type="date" id="inp-dead-date">
           </div>
-          <div class="field" style="max-width:80px">
+          <div class="field">
             <label>時</label>
             <select id="sel-h">
               <option>08</option><option>09</option><option selected>10</option>
@@ -234,7 +238,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
               <option>15</option><option>16</option><option>17</option>
             </select>
           </div>
-          <div class="field" style="max-width:80px">
+          <div class="field">
             <label>分</label>
             <select id="sel-m">
               <option>00</option><option>05</option><option>10</option><option>15</option>
