@@ -120,7 +120,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
       <div class="card-body">
         <div class="field">
           <label>選擇店家 (包含官方預設與您的私房菜單)</label>
-          <select id="sel-store"><option value="">── 請選擇 ──</option></select>
+          <select id="sel-store" onchange="onStoreChange()"><option value="">── 請選擇 ──</option></select>
         </div>
         <div class="field-row">
           <div class="field"><label>取餐日</label><input type="date" id="inp-target"></div>
@@ -130,6 +130,14 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
           </div>
           <div class="field" style="max-width:80px"><label>收單分</label>
             <select id="inp-m"><option>00</option><option>15</option><option selected>30</option><option>45</option></select>
+          </div>
+        </div>
+        <div id="items-section" style="display:none" class="field">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+            <label style="margin:0">開放品項（至少選一項）</label>
+            <button type="button" class="btn btn-ghost" style="font-size:.75rem;padding:.2rem .6rem" onclick="toggleAllItems()">全選/全清</button>
+          </div>
+          <div id="items-checkboxes" style="display:flex;flex-wrap:wrap;gap:.5rem .8rem;padding:.5rem;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">
           </div>
         </div>
         <div class="field">
@@ -349,6 +357,40 @@ function renderStoreSelect() {
   sel.appendChild(p2);
 }
 
+// ⭐ 選擇店家後即時更新品項勾選區塊
+function onStoreChange() {
+  const v = document.getElementById('sel-store').value;
+  const sec = document.getElementById('items-section');
+  const box = document.getElementById('items-checkboxes');
+  if (!v) { sec.style.display = 'none'; box.innerHTML = ''; return; }
+
+  const [owner, storeName] = v.split('|');
+  const storeData = (allStores[owner] || {})[storeName] || {};
+  const items = storeData.items || [];
+
+  if (!items.length) {
+    sec.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+
+  // 顯示品項勾選列表，預設全部勾選
+  box.innerHTML = items.map((it, i) =>
+    `<label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;font-size:.85rem">
+      <input type="checkbox" class="item-chk" value="${it.name}" checked>
+      ${it.name} ($${it.price})
+    </label>`
+  ).join('');
+  sec.style.display = 'block';
+}
+
+// 全選 / 全清 切換
+function toggleAllItems() {
+  const chks = document.querySelectorAll('.item-chk');
+  const anyUnchecked = [...chks].some(c => !c.checked);
+  chks.forEach(c => c.checked = anyUnchecked);
+}
+
 // ── 發起團購 ──
 async function submitGroup() {
   const v = document.getElementById('sel-store').value;
@@ -372,14 +414,23 @@ async function submitGroup() {
     return alert("❌ 取餐日不能早於收單日！");
   }
 
+  // ⭐ 讀取勾選的品項（若全勾則存 []，代表全開放；若有取消勾選則只開放勾選的）
+  const allChks = [...document.querySelectorAll('.item-chk')];
+  const checkedItems = allChks.filter(c => c.checked).map(c => c.value);
+  if (allChks.length > 0 && checkedItems.length === 0) {
+    return alert("❌ 請至少選擇一個開放品項！");
+  }
+  // 若全部都勾選，視為「全開放」存空陣列
+  const allowed = (checkedItems.length === allChks.length) ? [] : checkedItems;
+
   const grp = {
     id: Date.now().toString(),
     creator: uName,
     store: storeName,
-    store_owner: owner,   // ⭐ 記錄屬於哪個命名空間（'_admin_' 或 uName）
+    store_owner: owner,
     target_date: tD,
     deadline: `${dD} ${dH}:${dM}`,
-    allowed: [],  // 空 = 全開
+    allowed: allowed,
     opts: {
       linepay: lp,
       linepay_info: lpInf
