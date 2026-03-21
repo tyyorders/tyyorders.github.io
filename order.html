@@ -1073,11 +1073,16 @@ function selectGroup(gid, row) {
 function renderMenu() {
   const creator = currentGroup.creator || '_admin_';
   const storeData = (stores[creator] || {})[currentGroup.store] || {};
-  const allowed = currentGroup.allowed || [];
+  let allowed = currentGroup.allowed || [];
   const list = document.getElementById('menu-list');
 
+  // ⭐ allowed 為空代表「全部開放」，自動取店家所有品項
   if (allowed.length === 0) {
-    list.innerHTML = '<div style="color:var(--text-3);font-size:0.9rem">此開團未設定品項</div>';
+    allowed = (storeData.items || []).map(i => i.name).filter(Boolean);
+  }
+
+  if (allowed.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-3);font-size:0.9rem">此店家尚未設定品項</div>';
     return;
   }
 
