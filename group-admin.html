@@ -362,12 +362,23 @@ async function submitGroup() {
   const lp = document.getElementById('chk-lp').checked;
   const lpInf = document.getElementById('inp-lp-info').value;
 
+  // ⭐ 校驗收單時間必須在未來
+  const deadlineStr = `${dD}T${dH}:${dM}:00`;
+  const deadlineDate = new Date(deadlineStr);
+  if (deadlineDate <= new Date()) {
+    return alert("❌ 收單時間已經過去！\n請重新選擇未來的日期和時間。");
+  }
+  if (tD < dD) {
+    return alert("❌ 取餐日不能早於收單日！");
+  }
+
   const grp = {
     id: Date.now().toString(),
     creator: uName,
     store: storeName,
+    store_owner: owner,   // ⭐ 記錄屬於哪個命名空間（'_admin_' 或 uName）
     target_date: tD,
-    deadline: `${dD} ${dH}:${dM}`,   // ← 統一用 deadline（與 order.html 一致）
+    deadline: `${dD} ${dH}:${dM}`,
     allowed: [],  // 空 = 全開
     opts: {
       linepay: lp,

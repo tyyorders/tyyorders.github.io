@@ -1071,12 +1071,16 @@ function selectGroup(gid, row) {
 }
 
 function renderMenu() {
-  const creator = currentGroup.creator || '_admin_';
-  const storeData = (stores[creator] || {})[currentGroup.store] || {};
+  // ⭐ 優先用 store_owner（新格式），向下兼容舊格式使用 creator
+  const storeOwner = currentGroup.store_owner || currentGroup.creator || '_admin_';
+  // 先從 storeOwner 命名空間找，找不到再去 _admin_ 找（向下兼容）
+  const storeData = (stores[storeOwner] || {})[currentGroup.store]
+                 || (stores['_admin_'] || {})[currentGroup.store]
+                 || {};
   let allowed = currentGroup.allowed || [];
   const list = document.getElementById('menu-list');
 
-  // ⭐ allowed 為空代表「全部開放」，自動取店家所有品項
+  // allowed 為空代表「全部開放」，自動取店家所有品項
   if (allowed.length === 0) {
     allowed = (storeData.items || []).map(i => i.name).filter(Boolean);
   }
