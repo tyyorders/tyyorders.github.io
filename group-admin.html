@@ -156,6 +156,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
     <button class="tab-btn active" onclick="switchTab('launch',this)">🚀 發起新團購</button>
     <button class="tab-btn" onclick="switchTab('manage',this)">📋 我的開團管理</button>
     <button class="tab-btn" onclick="switchTab('stores',this)">🏪 私房菜單維護</button>
+    <button class="tab-btn" onclick="switchTab('history',this);loadHistory()">🗂️ 我的歷史開團</button>
   </nav>
 
   <!-- 發起新團購 -->
@@ -297,16 +298,43 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
       </div>
     </div>
   </div>
+
+  <!-- 我的歷史開團 -->
+  <div class="tab-panel" id="tab-history">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">🗂️ 我的歷史開團紀錄</span>
+        <button class="btn btn-ghost btn-sm" onclick="loadHistory()" style="margin-left:auto">🔄 重新載入</button>
+        <button class="btn btn-amber btn-sm" onclick="archiveExpiredGroups()" style="margin-left:.5rem">📦 手動歸檔過期團</button>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="tbl-wrap">
+          <table class="data-tbl">
+            <thead><tr><th>店家</th><th>取餐日</th><th>收單時間</th><th>訂單筆數</th><th>總金額</th><th>LINE Pay</th><th>現金</th></tr></thead>
+            <tbody id="tbody-history">
+              <tr class="empty-row"><td colspan="7">請切換至此頁自動載入</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:0.75rem 1rem;font-size:0.78rem;color:var(--text3);background:#f8fafc;border-top:1px solid var(--border)">
+          ℹ️ 歷史紀錄來自「手動刪除此團」後的自動封存。若有已過取餐日但尚未刪除的開團，請點「手動歸檔過期團」整理。
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- 分享文字彈窗 -->
 <div class="overlay" id="text-overlay">
-  <div class="dialog" style="max-width:500px">
+  <div class="dialog" style="max-width:520px">
     <h3 style="font-size:1.1rem;font-weight:800;margin-bottom:.8rem" id="text-title"></h3>
     <textarea id="text-area" style="width:100%;height:250px;padding:.8rem;border:1px solid #ccc;border-radius:8px;font-family:inherit;font-size:.85rem;line-height:1.6;resize:none" readonly></textarea>
-    <div style="display:flex;gap:.5rem;margin-top:1rem;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="closeText()">關閉</button>
-      <button class="btn btn-primary" onclick="shareAndCopyText()">📤 分享並複製</button>
+    <div style="display:flex;gap:.5rem;margin-top:1rem;justify-content:space-between;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" id="btn-export-excel" onclick="exportCsv()" style="display:none">📅 下載 CSV 對帳单</button>
+      <div style="display:flex;gap:.5rem;margin-left:auto">
+        <button class="btn btn-ghost" onclick="closeText()">關閉</button>
+        <button class="btn btn-primary" onclick="shareAndCopyText()">📤 分享並複製</button>
+      </div>
     </div>
   </div>
 </div>
@@ -405,6 +433,59 @@ if (uName && uPin) {
   document.getElementById('main-app').style.display='block';
   document.getElementById('header-user').textContent = `您好，${uName} 主購`;
   loadAllData();
+}
+
+// ── 歷史開團 ──
+async function loadHistory() {
+  const tb = document.getElementById('tbody-history');
+  tb.innerHTML = '<tr class="empty-row"><td colspan="7">讀取中...</td></tr>';
+  try {
+    const res = await fetch(`${SERVER}/api/admin_history`, {
+      headers: { "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const all = await res.json();
+    // 只顯示屬於這個團主的歷史
+    const mine = all.filter(g => g.creator === uName);
+    if (!mine.length) {
+      tb.innerHTML = '<tr class="empty-row"><td colspan="7">尚無歷史紀錄</td></tr>';
+      return;
+    }
+    mine.sort((a,b) => (b.target_date||'').localeCompare(a.target_date||''));
+    tb.innerHTML = mine.map(g => `
+      <tr>
+        <td>${g.store||g.store_name||''}</td>
+        <td>${g.target_date||'不明'}${getWdStr(g.target_date)}</td>
+        <td>${g.deadline||''}</td>
+        <td style="text-align:center">${g.count||0}</td>
+        <td style="text-align:right;font-weight:700;color:var(--green)">$${g.total||0}</td>
+        <td style="text-align:right;color:var(--purple)">$${g.linepay||0}</td>
+        <td style="text-align:right">$${g.cash||0}</td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tb.innerHTML = `<tr class="empty-row"><td colspan="7">讀取失敗：${e.message}</td></tr>`;
+  }
+}
+
+// 手動把已過期但尚未刪除的開團歸檔
+async function archiveExpiredGroups() {
+  const today = new Date().toISOString().slice(0, 10);
+  const expired = myGroups.filter(g => g.target_date && g.target_date < today);
+  if (!expired.length) { alert('目前沒有已過取餐日的開團需要歸檔！'); return; }
+  if (!confirm(`發現 ${expired.length} 筆過期開團，歸檔後將從有效清單中移除。\n確定繼續嗎？`)) return;
+  
+  const newGroups = myGroups.filter(g => !(g.target_date && g.target_date < today));
+  try {
+    const res = await fetch(`${SERVER}/api/groups`, {
+      method: "POST", headers: { "Content-Type":"application/json", "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) },
+      body: JSON.stringify(newGroups)
+    });
+    if (!res.ok) throw new Error(await res.text());
+    myGroups = newGroups;
+    renderMyGroups();
+    alert(`✅ 已成功歸檔 ${expired.length} 筆過期開團！\n您可切換至「我的歷史開團」查看。`);
+  } catch(e) { alert('歸檔失敗：' + e.message); }
 }
 
 function switchTab(id, btn) {
