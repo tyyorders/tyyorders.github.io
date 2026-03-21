@@ -133,15 +133,22 @@
   <div class="card">
     <div class="card-body">
       <div style="background:var(--amber-light);color:#d97706;padding:0.8rem;border-radius:8px;font-size:0.85rem;margin-bottom:1rem;font-weight:700">
-        💡 許願完成後別忘了「分享」給同事們點讚，高讚數的店家越快審核上架哦！
+        💡 許願完成後別忘了「分享」給同事們點讚，高讚數的店家越快審核或開團哦！
+      </div>
+
+      <div style="margin-bottom:1.2rem;display:flex;gap:1.5rem;font-weight:700;font-size:0.95rem;border-bottom:1px solid var(--border);padding-bottom:0.8rem">
+        <label style="cursor:pointer;display:flex;align-items:center;gap:0.4rem"><input type="radio" name="wishType" value="new" checked onchange="toggleWishType()"> 許願全新店家</label>
+        <label style="cursor:pointer;display:flex;align-items:center;gap:0.4rem"><input type="radio" name="wishType" value="exist" onchange="toggleWishType()"> 敲碗現有店家開團</label>
       </div>
       
-      <div class="field">
-        <label>店家名稱 *</label>
-        <input type="text" id="inp-store-name" placeholder="例如：一中便當">
-      </div>
-      <div class="field">
-        <label>餐點分類</label>
+      <!-- 許願全新店家 -->
+      <div id="wish-new-panel">
+        <div class="field">
+          <label>店家名稱 *</label>
+          <input type="text" id="inp-store-name" placeholder="例如：一中便當">
+        </div>
+        <div class="field">
+          <label>餐點分類</label>
         <select id="sel-category">
           <option>便當(葷食/素食)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
         </select>
@@ -162,9 +169,19 @@
             <tr class="empty-row"><td colspan="3" style="text-align:center;color:var(--text3);font-size:.8rem">尚未加入品項</td></tr>
           </tbody>
         </table>
+      </div> <!-- end wish-new-panel -->
+
+      <!-- 敲碗現有店家 -->
+      <div id="wish-exist-panel" style="display:none">
+        <div class="field">
+          <label>選擇想敲碗開團的店家 *</label>
+          <select id="sel-exist-store">
+            <option value="">載入中...</option>
+          </select>
+        </div>
       </div>
       
-      <button class="btn btn-purple" style="width:100%;padding:0.8rem;font-size:1rem" onclick="submitWish()">🚀 送出許願</button>
+      <button class="btn btn-purple" style="width:100%;padding:0.8rem;font-size:1rem;margin-top:1rem" onclick="submitWish()">🚀 送出許願</button>
     </div>
   </div>
 </div>
@@ -176,9 +193,13 @@
 const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 const SERVER = isLocal ? 'http://127.0.0.1:8000' : 'https://wmai-server-538622114704.asia-east1.run.app';
 
-let uName = localStorage.getItem('userName');
-let uPin = localStorage.getItem('userPin');
+let sessionInfo = {};
+try { sessionInfo = JSON.parse(localStorage.getItem('order_session') || '{}'); } catch(e){}
+let uName = sessionInfo.name;
+let uPin = sessionInfo.pin;
+
 let allWishes = [];
+let allStores = {};
 let targetWishId = new URLSearchParams(window.location.search).get('wid');
 
 function showToast(msg) {
@@ -202,7 +223,7 @@ async function init() {
     return;
   }
   document.getElementById('user-display').textContent = uName;
-  await loadWishes();
+  await Promise.all([loadWishes(), loadStores()]);
   document.getElementById('loader').style.opacity = '0';
   setTimeout(()=>document.getElementById('loader').style.display='none', 300);
   
@@ -228,6 +249,23 @@ async function loadWishes() {
   } catch(e) { console.error("Load API Error", e); }
 }
 
+async function loadStores() {
+  try {
+    const res = await fetch(`${SERVER}/api/stores`);
+    if(res.ok) {
+      const data = await res.json();
+      let combined = {};
+      for(let k in data) Object.assign(combined, data[k]);
+      allStores = combined;
+      
+      const sel = document.getElementById('sel-exist-store');
+      const storeKeys = Object.keys(combined).sort((a,b) => a.localeCompare(b, 'zh-TW'));
+      sel.innerHTML = '<option value="">請選擇...</option>' + 
+        storeKeys.map(k => `<option value="${k}">${k}</option>`).join('');
+    }
+  } catch(e){}
+}
+
 function renderWishes() {
   const c = document.getElementById('wishes-container');
   if(!allWishes || allWishes.length === 0) {
@@ -243,6 +281,7 @@ function renderWishes() {
     if(w.status === 'pending') tag = '<span class="tag tag-pending">審核中</span>';
     else if(w.status === 'approved') tag = '<span class="tag tag-approved">✔️ 已上架</span>';
     else if(w.status === 'rejected') tag = '<span class="tag tag-rejected">❌ 未通過</span>';
+    const typeTag = w.wish_type === 'exist' ? '<span class="tag tag-pending" style="background:#bae6fd;color:#0369a1">🔔 敲碗現有店</span>' : '<span class="tag tag-rejected" style="background:#fbcfe8;color:#9d174d">✨ 許願新店家</span>';
     
     // items summary
     const summary = (w.items||[]).slice(0, 3).map(i=>`${i.name}($${i.price})`).join('、') + ((w.items&&w.items.length>3)?' 等...':'');
@@ -252,7 +291,7 @@ function renderWishes() {
         <div class="wish-header">
           <div>
             <div class="wish-title">${w.store_name} ${tag}</div>
-            <div class="wish-meta">👤 ${w.user_name} 🏷️ ${w.category} 🕒 ${w.created_at.split(' ')[0]}</div>
+            <div class="wish-meta">👤 ${w.user_name} 🏷️ ${w.category} ${typeTag} 🕒 ${w.created_at.split(' ')[0]}</div>
           </div>
         </div>
         <div style="font-size:0.85rem;color:var(--text2);margin-top:0.2rem">
@@ -349,13 +388,34 @@ function removeItem(idx) {
   renderNewItems();
 }
 
+function toggleWishType() {
+  const wType = document.querySelector('input[name="wishType"]:checked').value;
+  if(wType === 'new') {
+    document.getElementById('wish-new-panel').style.display = 'block';
+    document.getElementById('wish-exist-panel').style.display = 'none';
+  } else {
+    document.getElementById('wish-new-panel').style.display = 'none';
+    document.getElementById('wish-exist-panel').style.display = 'block';
+  }
+}
+
 async function submitWish() {
-  const sname = document.getElementById('inp-store-name').value.trim();
-  const cat = document.getElementById('sel-category').value;
-  if(!sname) return showToast("請填寫店家名稱");
-  if(newItems.length === 0) return showToast("請至少填入一項想吃的品名！");
+  const wType = document.querySelector('input[name="wishType"]:checked').value;
+  let sname = "";
+  let payload = {};
   
-  const payload = { store_name: sname, category: cat, items: newItems };
+  if (wType === 'new') {
+    sname = document.getElementById('inp-store-name').value.trim();
+    const cat = document.getElementById('sel-category').value;
+    if(!sname) return showToast("請填寫店家名稱");
+    if(newItems.length === 0) return showToast("請至少填入一項想吃的品名！");
+    payload = { store_name: sname, category: cat, items: newItems, wish_type: 'new' };
+  } else {
+    sname = document.getElementById('sel-exist-store').value;
+    if(!sname) return showToast("請選擇店家");
+    const storeObj = allStores[sname] || {};
+    payload = { store_name: sname, category: storeObj.category||'其他', items: storeObj.items||[], wish_type: 'exist' };
+  }
   
   document.getElementById('loader').style.display='flex';
   document.getElementById('loader').style.opacity='1';
@@ -373,6 +433,7 @@ async function submitWish() {
     
     // reset form
     document.getElementById('inp-store-name').value = '';
+    document.getElementById('sel-exist-store').value = '';
     newItems = []; renderNewItems();
     
     await loadWishes();

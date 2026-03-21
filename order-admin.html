@@ -957,9 +957,12 @@ function renderWishList() {
     let d = document.createElement('div');
     d.className = 'store-list-item';
     if(w.id === targetWishId) d.classList.add('active');
+    
+    const typeLabel = w.wish_type === 'exist' ? '<span style="color:#0369a1;background:#bae6fd;padding:2px 6px;border-radius:12px;font-size:0.7rem;margin-left:6px;vertical-align:middle">敲碗</span>' : '<span style="color:#9d174d;background:#fbcfe8;padding:2px 6px;border-radius:12px;font-size:0.7rem;margin-left:6px;vertical-align:middle">新創</span>';
+
     d.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-weight:700">${w.store_name}</span>
+        <span style="font-weight:700">${w.store_name}${typeLabel}</span>
         <span style="font-size:0.75rem;background:#f1f5f9;padding:2px 6px;border-radius:12px;color:var(--text2)">❤️ ${w.likes?w.likes.length:0}</span>
       </div>
       <div style="font-size:0.75rem;color:var(--text3);margin-top:0.2rem">提案人: ${w.user_name}</div>
@@ -982,7 +985,9 @@ function loadWishEditor(wid) {
   document.getElementById('wish-author').textContent = `提案人: ${w.user_name} | ${w.created_at}`;
   
   document.getElementById('btn-wish-reject').disabled = false;
-  document.getElementById('btn-wish-approve').disabled = false;
+  const btnApprove = document.getElementById('btn-wish-approve');
+  btnApprove.disabled = false;
+  btnApprove.innerHTML = w.wish_type === 'exist' ? '✔️ 標註已開團' : '✔️ 同意上架並入庫';
   
   currentWishItems = [...(w.items || [])];
   renderWishItems();
@@ -1038,7 +1043,10 @@ async function submitWishStatus(statusAction) {
     });
     if(!res.ok) throw new Error(await res.text());
     
-    showToast(statusAction==='approved' ? `已核准✅ ${sname} 已自動加入店家庫！` : `已駁回❌`);
+    const w = allWishes.find(x => x.id === targetWishId);
+    const isExist = w && w.wish_type === 'exist';
+    
+    showToast(statusAction==='approved' ? (isExist ? `已核准✅ ${sname} 原本就是店家，已標註開團！` : `已核准✅ ${sname} 已自動加入店家庫！`) : `已駁回❌`);
     
     document.getElementById('wish-edit-title').textContent = "審核：請先從左側選擇";
     document.getElementById('inp-wish-sname').value = "";
