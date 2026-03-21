@@ -275,10 +275,16 @@ async function doAuth() {
       document.getElementById('header-user').textContent = `您好，${n} 主購`;
       loadAllData();
     } else {
-      document.getElementById('auth-err').textContent = "登入失敗，姓名或 PIN 碼錯誤";
+      // ⭐ 顯示後端具體錯誤（幫助診斷是「帳號不存在」還是「PIN 錯誤」）
+      let errMsg = "登入失敗";
+      try {
+        const errJson = await res.json();
+        errMsg = errJson.detail || errMsg;
+      } catch(e2) {}
+      document.getElementById('auth-err').textContent = `[${res.status}] ${errMsg}`;
     }
   } catch(e) {
-    document.getElementById('auth-err').textContent = "無法連線至伺服器";
+    document.getElementById('auth-err').textContent = `無法連線至伺服器：${e.message}`;
   }
   btn.textContent = '驗證並進入'; btn.disabled = false;
 }
