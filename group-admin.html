@@ -12,19 +12,21 @@
   --text:#1a2332;--text2:#4a5568;--text3:#8fa0ba;
   --border:#dde3ed;--shadow:0 2px 8px rgba(0,0,0,0.08);--shadow-lg:0 8px 24px rgba(0,0,0,0.12);
   --radius:12px;--rsm:8px;
+  --green-gradient:linear-gradient(135deg,#14532d 0%,#16a34a 100%);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 
-.header{background:linear-gradient(135deg,#14532d 0%,#16a34a 100%);color:#fff;padding:0 1.5rem;display:flex;align-items:center;gap:.8rem;box-shadow:0 4px 20px rgba(22,163,74,.3);min-height:60px;position:sticky;top:0;z-index:100}
-.header-title{font-size:1.15rem;font-weight:900}
-.header-sub{font-size:.75rem;opacity:.7}
-.header-right{margin-left:auto;display:flex;align-items:center;gap:.75rem}
-.back-btn{padding:.3rem .8rem;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:var(--rsm);text-decoration:none;font-size:.82rem;font-weight:700;transition:background .15s}
-.back-btn:hover{background:rgba(255,255,255,.25)}
+/* Header */
+.header{display:flex;align-items:center;padding:0 1.5rem;height:65px;background:var(--green-gradient);color:#fff;box-shadow:var(--shadow);position:sticky;top:0;z-index:100}
+.header-title{font-weight:800;font-size:1.15rem;letter-spacing:.5px}
+.header-sub{font-size:.78rem;opacity:.9}
+.header-right{margin-left:auto;display:flex;gap:.8rem;align-items:center}
+.back-btn{color:#fff;text-decoration:none;font-size:.85rem;font-weight:700;border:1px solid rgba(255,255,255,.3);padding:.4rem .8rem;border-radius:var(--rsm);transition:background .2s}.back-btn:hover{background:rgba(255,255,255,.15)}
 
+/* Modal & Auth (與 Header 有關) */
 #auth-wall{position:fixed;inset:0;background:linear-gradient(135deg,#14532d,#16a34a);display:flex;align-items:center;justify-content:center;z-index:999}
-.auth-box{background:#fff;border-radius:16px;padding:2.5rem 3rem;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center}
+.auth-box{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:3rem 2.5rem;width:100%;max-width:400px;text-align:center}
 .auth-title{font-size:1.3rem;font-weight:900;color:var(--navy);margin-bottom:.4rem}
 .auth-sub{font-size:.85rem;color:var(--text3);margin-bottom:1.5rem}
 .auth-input{width:100%;border:2px solid var(--border);border-radius:var(--rsm);padding:.65rem 1rem;font-size:1rem;font-family:inherit;outline:none;margin-bottom:1rem}
@@ -49,8 +51,11 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
 
 .field{margin-bottom:.85rem}
 .field label{display:block;font-size:.8rem;font-weight:700;color:var(--text2);margin-bottom:.3rem}
-.field input,.field select{width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:.5rem .75rem;font-size:.9rem;outline:none;background:#fff;transition:border-color .15s;-webkit-appearance:none;appearance:none;}
-.field input[type="checkbox"]{-webkit-appearance:checkbox;appearance:checkbox;}
+.field input,.field select{width:100%;border:1px solid #cbd5e1;border-radius:var(--rsm);padding:.55rem .75rem;font-size:.9rem;outline:none;background:#fff;transition:border-color .15s;-webkit-appearance:none;appearance:none;min-height:42px;color:var(--text1)}
+.field input:focus,.field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
+.field input[type="date"]::-webkit-calendar-picker-indicator{opacity:0.6;cursor:pointer}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .5rem center;background-size:1.2em}
+.field input[type="checkbox"]{-webkit-appearance:checkbox;appearance:checkbox;min-height:auto}
 .field-row{display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap}
 .field-row .field{margin-bottom:1rem;flex:1;min-width:120px}
 @media(max-width:500px){
@@ -256,7 +261,11 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
         <div class="card-body">
           <div class="field-row">
             <div class="field"><label>店家名稱 *</label><input type="text" id="store-name" placeholder="店家名稱"></div>
-            <div class="field"><label>分類</label><select id="store-cat"><option>飲料</option><option>便當</option><option>其他</option></select></div>
+            <div class="field"><label>分類</label>
+              <select id="store-cat">
+                <option>便當(葷食/素食)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
+              </select>
+            </div>
           </div>
           <div style="font-weight:700;font-size:.85rem;margin-bottom:.5rem">品項清單</div>
           <div class="field-row" style="margin-bottom:1rem">
@@ -375,27 +384,58 @@ async function loadAllData() {
 
     const or = await fetch(`${SERVER}/api/orders`);
     allOrders = await or.json();
-    if(selectedGroupId) renderGroupOrders();
+    const now = new Date();
+    // 預設日期為今天，解決 iOS Safari 日期預設空白的問題
+    const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    document.getElementById('inp-target').value = todayStr;
+    document.getElementById('inp-dead-date').value = todayStr;
   } catch(e) {
     alert("讀取資料失敗: " + e.message);
   }
 }
 
+// 根據分類整理店家選單
 function renderStoreSelect() {
   const sel = document.getElementById('sel-store');
   sel.innerHTML = '<option value="">── 請選擇店家 ──</option>';
-  // 加入 Admin 的
-  let p1 = document.createElement('optgroup'); p1.label = "🏢 官方公版店家";
-  Object.keys(allStores['_admin_']||{}).forEach(k => {
-    let opt = new Option(k, `_admin_|${k}`); p1.appendChild(opt);
+  
+  // 建立分類群組
+  const categories = {};
+  
+  // 1. 塞入官方店家
+  Object.keys(allStores['_admin_']||{}).forEach(storeName => {
+    const store = allStores['_admin_'][storeName];
+    const cat = store.category || '其他';
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push({ name: storeName, owner: '_admin_', isOfficial: true });
   });
-  sel.appendChild(p1);
-  // 加入 My stores
-  let p2 = document.createElement('optgroup'); p2.label = "🏠 我的私房菜單";
-  Object.keys(myStores||{}).forEach(k => {
-    let opt = new Option(k, `${uName}|${k}`); p2.appendChild(opt);
+  
+  // 2. 塞入私房店家
+  Object.keys(myStores||{}).forEach(storeName => {
+    const store = myStores[storeName];
+    const cat = store.category || '其他';
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push({ name: storeName, owner: uName, isOfficial: false });
   });
-  sel.appendChild(p2);
+
+  // 3. 按照分類產生 optgroup
+  const catOrder = ["便當(葷食/素食)", "便當", "飲料", "團購", "麵食", "速食", "其他"];
+  const sortedCats = Object.keys(categories).sort((a,b) => {
+    let ia = catOrder.indexOf(a), ib = catOrder.indexOf(b);
+    if(ia===-1) ia=99; if(ib===-1) ib=99;
+    return ia - ib;
+  });
+
+  sortedCats.forEach(cat => {
+    let grp = document.createElement('optgroup');
+    grp.label = `🏷️ ${cat}`;
+    categories[cat].forEach(s => {
+      let suffix = s.isOfficial ? " (官方)" : " (私房)";
+      let opt = new Option(`${s.name}${s.isOfficial?'':suffix}`, `${s.owner}|${s.name}`);
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  });
 }
 
 // ⭐ 選擇店家後即時更新品項勾選區塊

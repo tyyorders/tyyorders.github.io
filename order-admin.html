@@ -64,9 +64,11 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
 /* Form fields */
 .field{margin-bottom:.85rem}
 .field label{display:block;font-size:.8rem;font-weight:700;color:var(--text2);margin-bottom:.3rem}
-.field input,.field select,.field textarea{width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:.5rem .75rem;font-size:.9rem;font-family:inherit;outline:none;background:#fff;transition:border-color .15s;-webkit-appearance:none;appearance:none;}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue)}
-.field input[type="checkbox"]{-webkit-appearance:checkbox;appearance:checkbox;}
+.field input,.field select,.field textarea{width:100%;border:1px solid #cbd5e1;border-radius:var(--rsm);padding:.55rem .75rem;font-size:.9rem;font-family:inherit;outline:none;background:#fff;transition:border-color .15s;-webkit-appearance:none;appearance:none;min-height:42px;color:var(--text1)}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
+.field input[type="date"]::-webkit-calendar-picker-indicator{opacity:0.6;cursor:pointer}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .5rem center;background-size:1.2em}
+.field input[type="checkbox"]{-webkit-appearance:checkbox;appearance:checkbox;min-height:auto}
 .field textarea{resize:vertical;min-height:70px}
 .field-row{display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap}
 .field-row .field{margin-bottom:1rem;flex:1;min-width:120px}
@@ -144,6 +146,9 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
   /* Header 調整 */
   .header { flex-direction: column; align-items: flex-start; padding: 1rem; height: auto; gap: 0.8rem; }
   .header-right { margin-left: 0; width: 100%; justify-content: space-between; flex-wrap: wrap; }
+  /* Tabs 調整 */
+  .tabs { padding: 0 .5rem; }
+  .tab-btn { padding: .8rem .8rem; font-size: .85rem; }
 
   /* 登入牆寬度修正 */
   .auth-box { width: 90vw !important; padding: 2rem 1.5rem !important; }
@@ -416,7 +421,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
           <div class="field"><label>店家名稱 *</label><input type="text" id="inp-sname" placeholder="例：一中便當"></div>
           <div class="field"><label>分類</label>
             <select id="sel-category">
-              <option>便當</option><option>飲料</option><option>麵食</option><option>速食</option><option>其他</option>
+              <option>便當(葷食/素食)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
             </select>
           </div>
           <div class="field"><label>電話</label><input type="text" id="inp-phone" placeholder="（選填）"></div>
@@ -1140,8 +1145,32 @@ async function performAutoArchiving() {
 function refreshStoreSel() {
   const sel = document.getElementById('sel-store');
   const cur = sel.value;
-  sel.innerHTML = '<option value="">── 請選擇 ──</option>' +
-    Object.keys(stores).map(s=>`<option value="${s}" ${s===cur?'selected':''}>${s}</option>`).join('');
+  sel.innerHTML = '<option value="">── 請選擇 ──</option>';
+
+  const categories = {};
+  Object.keys(stores).forEach(sName => {
+    const cat = stores[sName].category || '其他';
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push(sName);
+  });
+
+  const catOrder = ["便當(葷食/素食)", "便當", "飲料", "團購", "麵食", "速食", "其他"];
+  const sortedCats = Object.keys(categories).sort((a,b) => {
+    let ia = catOrder.indexOf(a), ib = catOrder.indexOf(b);
+    if(ia===-1) ia=99; if(ib===-1) ib=99;
+    return ia - ib;
+  });
+
+  sortedCats.forEach(cat => {
+    let grp = document.createElement('optgroup');
+    grp.label = `🏷️ ${cat}`;
+    categories[cat].forEach(s => {
+      let opt = new Option(s, s);
+      if (s === cur) opt.selected = true;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  });
 }
 
 function onStoreSelect() {
