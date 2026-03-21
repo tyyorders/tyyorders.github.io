@@ -267,6 +267,17 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
               </select>
             </div>
           </div>
+          <div class="card" style="background:#fffbeb;border-color:#fcd34d;margin-bottom:.75rem">
+            <div class="card-body" style="padding:.75rem">
+              <div style="font-size:.82rem;font-weight:700;color:#92400e;margin-bottom:.4rem">新品項預設客製選項</div>
+              <div style="display:flex;gap:1rem;flex-wrap:wrap">
+                <label class="checkbox-label"><input type="checkbox" id="opt-rice"> 開放飯量</label>
+                <label class="checkbox-label"><input type="checkbox" id="opt-sug"> 開放甜度</label>
+                <label class="checkbox-label"><input type="checkbox" id="opt-ice"> 開放溫度</label>
+                <button class="btn btn-amber btn-sm" onclick="applyOptsToAll()">🔄 套用至全部</button>
+              </div>
+            </div>
+          </div>
           <div style="font-weight:700;font-size:.85rem;margin-bottom:.5rem">品項清單</div>
           <div class="field-row" style="margin-bottom:1rem">
             <div class="field"><label>品名</label><input type="text" id="item-name"></div>
@@ -275,7 +286,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
           </div>
           <div class="tbl-wrap" style="max-height:200px;overflow-y:auto">
             <table class="data-tbl">
-              <thead><tr><th>品名</th><th>價格</th><th>操作</th></tr></thead>
+              <thead><tr><th>品名</th><th>價格</th><th>客製選項</th><th>操作</th></tr></thead>
               <tbody id="tbody-store-items"></tbody>
             </table>
           </div>
@@ -612,9 +623,10 @@ async function deleteSelectedGroup() {
 }
 
 // ── 文案產生器 ──
-function openText(title, text) {
+function openText(title, text, isBilling = false) {
   document.getElementById('text-title').textContent = title;
   document.getElementById('text-area').value = text;
+  document.getElementById('btn-export-excel').style.display = isBilling ? 'inline-flex' : 'none';
   document.getElementById('text-overlay').classList.add('active');
 }
 function closeText() { document.getElementById('text-overlay').classList.remove('active'); }
@@ -624,16 +636,62 @@ function copyText() {
   alert('已複製到剪貼簿！');
 }
 
+async function shareText() {
+  const t = document.getElementById('text-area').value;
+  const title = document.getElementById('text-title').textContent;
+  if (navigator.share) {
+    try { await navigator.share({ title: title, text: t }); } catch(err) { console.log("Share API error:", err); }
+  } else {
+    alert("您的瀏覽器不支援原生分享，請使用複製功能複製文字。");
+  }
+}
+
+function exportCsv() {
+  const g = myGroups.find(x => x.id === selectedGroupId);
+  const gOrders = allOrders.map(o=>o[1]).filter(o=>o.group_id===selectedGroupId);
+  
+  let csv = "訂購人,品名,客製選項,金額(單價x數量),付款方式\n";
+  let total = 0;
+  gOrders.forEach(o => {
+    let sub = parseInt(o.qty)*parseInt(o.price);
+    total += sub;
+    csv += `"${o.user_name}","${o.item_name}","${o.options||''}","$${sub} (${o.price}x${o.qty})","${o.pay_method}"\n`;
+  });
+  csv += `\n,,,總計:,"${total}"\n`;
+
+  const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${g.store}_請款明細.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function generateShareText() {
   const g = myGroups.find(x => x.id === selectedGroupId);
   const loc = window.location;
   const link = `${loc.protocol}//${loc.host}${loc.pathname.replace('group-admin','order')}?gid=${g.id}`;
+  
+  // 取得店家品項清單
+  const storeData = (allStores['_admin_'] && allStores['_admin_'][g.store]) || (myStores && myStores[g.store]);
+  const itemsText = (storeData && storeData.items && storeData.items.length) 
+                     ? "\n📋 菜單速看：\n" + storeData.items.map(i=>`  - ${i.name} $${i.price}`).join('\n') 
+                     : "";
+                     
+  const targetText = g.target_date || "待通知";
+  
+  // 修正時間 undefined，若為舊版沒有 deadline 直接用 dead_time
+  const dline = g.deadline || g.dead_time || "未定";
+
   const txt = `🔥 【揪團啦】${g.store}
-⏳ 收單時間：${g.dead_time}
+📅 取餐時間：${targetText}
+⏳ 收單時間：${dline}
+${itemsText}
 
 👉 點擊下方專屬連結，免打字直接跟團：
 ${link}`;
-  openText(`一鍵揪團文案`, txt);
+  openText(`一鍵揪團文案`, txt, false);
 }
 
 function generateBillingText() {
@@ -661,7 +719,7 @@ function generateBillingText() {
   lines.push(`⚠️ 請將現金交給【${uName}】`);
   if(g.opts?.linepay && g.opts?.linepay_info) lines.push(`💳 LINE Pay / 匯款：${g.opts.linepay_info}`);
 
-  openText(`一鍵請款明細`, lines.join('\n'));
+  openText(`一鍵請款明細`, lines.join('\n'), true);
 }
 
 // ── 私房菜單維護 ──
@@ -701,10 +759,21 @@ function loadStoreEditor(sn) {
   tb.innerHTML = '';
   const items = myStores[sn].items || [];
   items.forEach((it, idx) => {
+    const oStr = [it.opts?.rice&&'飯量', it.opts?.sugar&&'甜度', it.opts?.ice&&'溫度'].filter(Boolean).join('、')||'無';
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${it.name}</td><td>${it.price}</td><td><button class="btn btn-danger" style="padding:.2rem .4rem;font-size:.7rem" onclick="removeStoreItem(${idx})">刪</button></td>`;
+    tr.innerHTML = `<td>${it.name}</td><td>${it.price}</td><td>${oStr}</td><td><button class="btn btn-danger" style="padding:.2rem .4rem;font-size:.7rem" onclick="this.closest('tr').remove()">刪</button></td>`;
     tb.appendChild(tr);
   });
+}
+
+function applyOptsToAll() {
+  const oStr = [document.getElementById('opt-rice').checked&&'飯量',
+                document.getElementById('opt-sug').checked&&'甜度',
+                document.getElementById('opt-ice').checked&&'溫度'].filter(Boolean).join('、')||'無';
+  document.querySelectorAll('#tbody-store-items tr:not(.empty-row)').forEach(r=>{
+    const tds = r.querySelectorAll('td'); if(tds[2]) tds[2].textContent=oStr;
+  });
+  alert('已套用至所有品項！');
 }
 
 function addStoreItem() {
@@ -713,24 +782,16 @@ function addStoreItem() {
   if(!n) return;
   if(!editingStoreName && !document.getElementById('store-name').value.trim()) return alert("請先填寫上方店家名稱再加入品項");
   
-  // 建立暫存陣列如果不存在
-  if(editingStoreName && !myStores[editingStoreName]) {
-    myStores[editingStoreName] = { category: document.getElementById('store-cat').value, items: [] };
-  }
+  const oStr = [document.getElementById('opt-rice').checked&&'飯量',
+                document.getElementById('opt-sug').checked&&'甜度',
+                document.getElementById('opt-ice').checked&&'溫度'].filter(Boolean).join('、')||'無';
   
   const tr = document.createElement('tr');
-  tr.innerHTML = `<td>${n}</td><td>${p}</td><td><button class="btn btn-danger" style="padding:.2rem .4rem;font-size:.7rem" onclick="this.closest('tr').remove()">刪</button></td>`;
+  tr.innerHTML = `<td>${n}</td><td>${p}</td><td>${oStr}</td><td><button class="btn btn-danger" style="padding:.2rem .4rem;font-size:.7rem" onclick="this.closest('tr').remove()">刪</button></td>`;
   document.getElementById('tbody-store-items').appendChild(tr);
   
   document.getElementById('item-name').value = '';
   document.getElementById('item-price').value = '';
-}
-
-function removeStoreItem(idx) {
-  if(editingStoreName && myStores[editingStoreName]) {
-    myStores[editingStoreName].items.splice(idx, 1);
-    loadStoreEditor(editingStoreName);
-  }
 }
 
 async function saveMyStores() {
@@ -742,7 +803,11 @@ async function saveMyStores() {
   const items = [];
   document.getElementById('tbody-store-items').querySelectorAll('tr').forEach(tr => {
     let tds = tr.querySelectorAll('td');
-    if(tds.length === 3) items.push({name: tds[0].textContent, price: parseInt(tds[1].textContent) || 0, options: ['rice','sug','ice']} );
+    if(tds.length === 4) {
+      let oStr = tds[2].textContent;
+      let optsObj = { rice: oStr.includes('飯量'), sugar: oStr.includes('甜度'), ice: oStr.includes('溫度') };
+      items.push({name: tds[0].textContent, price: parseInt(tds[1].textContent) || 0, opts: optsObj} );
+    }
   });
 
   // 如果更名了，要刪掉舊的

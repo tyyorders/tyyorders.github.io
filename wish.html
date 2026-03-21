@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>點餐小助手 — 許願池</title>
+<style>
+  :root {
+    --purple: #8b5cf6; --purple-light: #ede9fe; --purple-dark: #6d28d9;
+    --amber: #f59e0b; --amber-light: #fef3c7;
+    --red: #ef4444;
+    --text: #1e293b; --text2: #475569; --text3: #64748b;
+    --bg: #f8fafc; --border: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg); color: var(--text); padding-bottom: 5rem;
+  }
+  
+  /* Header */
+  .header {
+    background: white; padding: 0.8rem 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50; flex-wrap: wrap; gap: 0.5rem;
+  }
+  .header-title { font-size: 1.1rem; font-weight: 800; color: var(--purple-dark); display: flex; align-items: center; gap: 0.5rem; }
+  .header-actions { display: flex; gap: 0.5rem; align-items: center; }
+  
+  /* Tabs */
+  .tabs {
+    display: flex; background: white; border-bottom: 1px solid var(--border);
+    overflow-x: auto; padding: 0 0.5rem; scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    padding: 0.8rem 1rem; border: none; background: none; font-size: 0.95rem; font-weight: 700;
+    color: var(--text3); border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap;
+  }
+  .tab-btn.active { color: var(--purple); border-bottom-color: var(--purple); }
+  
+  .tab-panel { display: none; padding: 1.2rem 1rem; max-width: 600px; margin: 0 auto; }
+  .tab-panel.active { display: block; }
+  
+  /* Cards & Forms */
+  .card { background: white; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 1rem; overflow: hidden; }
+  .card-body { padding: 1.2rem; }
+  .field { margin-bottom: 1rem; }
+  .field label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--text2); margin-bottom: 0.4rem; }
+  .field input, .field select {
+    width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-radius: 8px;
+    font-family: inherit; font-size: 1rem; min-height: 42px; background: white;
+  }
+  
+  /* Buttons */
+  .btn {
+    padding: 0.6rem 1rem; border-radius: 8px; border: none; font-family: inherit; font-size: 0.9rem;
+    font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  }
+  .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+  .btn-purple { background: var(--purple); color: white; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+  .btn-amber { background: var(--amber); color: white; }
+  
+  /* Wish List */
+  .wish-item {
+    border-bottom: 1px solid var(--border); padding: 1rem;
+    display: flex; flex-direction: column; gap: 0.8rem;
+  }
+  .wish-item:last-child { border-bottom: none; }
+  .wish-header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .wish-title { font-size: 1.1rem; font-weight: 800; color: var(--purple-dark); margin-bottom: 0.2rem; }
+  .wish-meta { font-size: 0.75rem; color: var(--text3); }
+  .tag { font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; background: var(--border); }
+  .tag-pending { background: #fef08a; color: #854d0e; }
+  .tag-approved { background: #dcfce7; color: #166534; }
+  .tag-rejected { background: #fee2e2; color: #991b1b; }
+  
+  .wish-actions { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
+  .btn-like { background: #f1f5f9; color: var(--text2); border: 1px solid var(--border); border-radius: 99px; padding: 0.4rem 0.8rem; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 0.3rem; transition: background 0.2s; }
+  .btn-like.liked { background: #fee2e2; color: #ef4444; border-color: #fca5a5; }
+  
+  #toast {
+    position: fixed; bottom: -50px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.8); color: white; padding: 0.6rem 1.2rem; border-radius: 999px;
+    font-size: 0.85rem; transition: bottom 0.3s cubic-bezier(0.34,1.56,0.64,1); z-index: 1000;
+  }
+  #toast.show { bottom: 20px; }
+  
+  .tbl-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 1rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; }
+  th, td { padding: 0.6rem; border-bottom: 1px solid var(--border); }
+  th { background: #f8fafc; font-weight: 700; color: var(--text2); }
+  
+  /* LoadingOverlay */
+  .loader-overlay {
+    position: fixed; inset: 0; background: white; z-index: 999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity 0.3s;
+  }
+  .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--purple); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="loader-overlay" id="loader"><div class="spinner"></div><div style="margin-top:1rem;color:var(--text3);font-size:.9rem;font-weight:700">載入中...</div></div>
+
+<header class="header">
+  <div class="header-title">✨ 許願池 <span style="font-size:0.8rem;font-weight:400;color:var(--text3);background:#f1f5f9;padding:2px 6px;border-radius:12px;margin-left:8px" id="user-display">未登入</span></div>
+  <div class="header-actions">
+    <a href="index.html" class="btn btn-ghost btn-sm">🏠 返回</a>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" onclick="switchTab('list', this)">📋 許願清單</button>
+  <button class="tab-btn" onclick="switchTab('create', this)">✍️ 提出許願</button>
+</nav>
+
+<!-- 許願清單 -->
+<div class="tab-panel active" id="tab-list">
+  <div class="card">
+    <div id="wishes-container">
+      <div style="padding:1.5rem;text-align:center;color:var(--text3);font-size:.9rem">尚無許願紀錄</div>
+    </div>
+  </div>
+</div>
+
+<!-- 提出許願 -->
+<div class="tab-panel" id="tab-create">
+  <div class="card">
+    <div class="card-body">
+      <div style="background:var(--amber-light);color:#d97706;padding:0.8rem;border-radius:8px;font-size:0.85rem;margin-bottom:1rem;font-weight:700">
+        💡 許願完成後別忘了「分享」給同事們點讚，高讚數的店家越快審核上架哦！
+      </div>
+      
+      <div class="field">
+        <label>店家名稱 *</label>
+        <input type="text" id="inp-store-name" placeholder="例如：一中便當">
+      </div>
+      <div class="field">
+        <label>餐點分類</label>
+        <select id="sel-category">
+          <option>便當(葷食/素食)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
+        </select>
+      </div>
+      
+      <div style="font-weight:700;font-size:0.85rem;margin:1.5rem 0 0.5rem;color:var(--text2)">想吃的品項 (最少填寫一項)</div>
+      
+      <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem">
+        <input type="text" id="add-item-name" placeholder="品名" style="flex:1;padding:0.5rem;border:1px solid var(--border);border-radius:6px;font-size:.9rem">
+        <input type="number" id="add-item-price" placeholder="價格" style="width:70px;padding:0.5rem;border:1px solid var(--border);border-radius:6px;font-size:.9rem">
+        <button class="btn btn-ghost" onclick="addItem()" style="padding:0.5rem;font-size:1.1rem">➕</button>
+      </div>
+      
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>品名</th><th>價格</th><th style="width:50px"></th></tr></thead>
+          <tbody id="tbody-items">
+            <tr class="empty-row"><td colspan="3" style="text-align:center;color:var(--text3);font-size:.8rem">尚未加入品項</td></tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <button class="btn btn-purple" style="width:100%;padding:0.8rem;font-size:1rem" onclick="submitWish()">🚀 送出許願</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// --- 環境設定與憑證載入 ---
+const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+const SERVER = isLocal ? 'http://127.0.0.1:8000' : 'https://wmai-server-538622114704.asia-east1.run.app';
+
+let uName = localStorage.getItem('userName');
+let uPin = localStorage.getItem('userPin');
+let allWishes = [];
+let targetWishId = new URLSearchParams(window.location.search).get('wid');
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+async function init() {
+  if(!uName || !uPin) {
+    alert("請先在個人點餐系統登入後再使用許願池功能！");
+    window.location.href = "index.html";
+    return;
+  }
+  document.getElementById('user-display').textContent = uName;
+  await loadWishes();
+  document.getElementById('loader').style.opacity = '0';
+  setTimeout(()=>document.getElementById('loader').style.display='none', 300);
+  
+  if (targetWishId) {
+    setTimeout(() => {
+      const el = document.getElementById(`wish-${targetWishId}`);
+      if(el) {
+        el.scrollIntoView({behavior: 'smooth', block: 'center'});
+        el.style.backgroundColor = '#fef3c7';
+        setTimeout(()=>el.style.backgroundColor='transparent', 2000);
+      }
+    }, 500);
+  }
+}
+
+async function loadWishes() {
+  try {
+    const res = await fetch(`${SERVER}/api/wishes`);
+    if(res.ok) {
+      allWishes = await res.json();
+      renderWishes();
+    }
+  } catch(e) { console.error("Load API Error", e); }
+}
+
+function renderWishes() {
+  const c = document.getElementById('wishes-container');
+  if(!allWishes || allWishes.length === 0) {
+    c.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--text3);font-size:.9rem">尚無許願紀錄，搶頭香提出第一個吧！</div>';
+    return;
+  }
+  
+  c.innerHTML = allWishes.map(w => {
+    const isLiked = w.likes && w.likes.includes(uName);
+    const likeCnt = w.likes ? w.likes.length : 0;
+    
+    let tag = '';
+    if(w.status === 'pending') tag = '<span class="tag tag-pending">審核中</span>';
+    else if(w.status === 'approved') tag = '<span class="tag tag-approved">✔️ 已上架</span>';
+    else if(w.status === 'rejected') tag = '<span class="tag tag-rejected">❌ 未通過</span>';
+    
+    // items summary
+    const summary = (w.items||[]).slice(0, 3).map(i=>`${i.name}($${i.price})`).join('、') + ((w.items&&w.items.length>3)?' 等...':'');
+
+    return `
+      <div class="wish-item" id="wish-${w.id}" style="transition:background 0.5s">
+        <div class="wish-header">
+          <div>
+            <div class="wish-title">${w.store_name} ${tag}</div>
+            <div class="wish-meta">👤 ${w.user_name} 🏷️ ${w.category} 🕒 ${w.created_at.split(' ')[0]}</div>
+          </div>
+        </div>
+        <div style="font-size:0.85rem;color:var(--text2);margin-top:0.2rem">
+          🍽️ 推薦品項：${summary || '未提供'}
+        </div>
+        <div class="wish-actions">
+          <button class="btn-like ${isLiked?'liked':''}" onclick="toggleLike('${w.id}')" ${w.status!=='pending'?'disabled':''}>
+            ${isLiked?'💖':'🤍'} <span id="like-cnt-${w.id}">${likeCnt}</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" style="border-radius:99px" onclick="shareWish('${w.id}', '${w.store_name}')">📢 分享連結</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function toggleLike(wid) {
+  const btn = document.querySelector(`#wish-${wid} .btn-like`);
+  if(btn.disabled) return;
+  const originalHtml = btn.innerHTML;
+  btn.innerHTML = '...';
+  try {
+    const res = await fetch(`${SERVER}/api/wishes/${wid}/like`, {
+      method: "POST",
+      headers: { "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) }
+    });
+    if(!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    
+    // update memory & UI
+    const w = allWishes.find(x=>x.id===wid);
+    if(w) {
+      if(data.liked && !w.likes.includes(uName)) w.likes.push(uName);
+      else if(!data.liked && w.likes.includes(uName)) w.likes = w.likes.filter(x=>x!==uName);
+    }
+    document.getElementById(`like-cnt-${wid}`).textContent = data.likes;
+    if(data.liked) {
+      btn.classList.add('liked');
+      btn.innerHTML = `💖 <span id="like-cnt-${wid}">${data.likes}</span>`;
+    } else {
+      btn.classList.remove('liked');
+      btn.innerHTML = `🤍 <span id="like-cnt-${wid}">${data.likes}</span>`;
+    }
+  } catch(e) {
+    alert("點讚失敗，請稍後再試。");
+    btn.innerHTML = originalHtml;
+  }
+}
+
+async function shareWish(wid, storeName) {
+  const loc = window.location;
+  const link = `${loc.protocol}//${loc.host}${loc.pathname}?wid=${wid}`;
+  const text = `✨ 快來幫我的許願【${storeName}】點讚！讚數夠多才會上架喔！\n👉 點擊連結支持：\n${link}`;
+  
+  if (navigator.share) {
+    try { await navigator.share({ title: '點餐小助手許願池', text: text }); } catch(e) {}
+  } else {
+    // 降級複製
+    const el = document.createElement('textarea');
+    el.value = text; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+    showToast("已成功複製許願連結，快去貼給同事！");
+  }
+}
+
+// ── 建立許願表單 ──
+let newItems = [];
+function renderNewItems() {
+  const tb = document.getElementById('tbody-items');
+  if(!newItems.length) {
+    tb.innerHTML = '<tr class="empty-row"><td colspan="3" style="text-align:center;color:var(--text3);font-size:.8rem">尚未加入品項</td></tr>';
+    return;
+  }
+  tb.innerHTML = newItems.map((it, idx) => `
+    <tr>
+      <td>${it.name}</td>
+      <td>$${it.price}</td>
+      <td><button class="btn btn-ghost" style="padding:0.2rem 0.5rem;font-size:0.75rem;color:var(--red);border-color:#fca5a5" onclick="removeItem(${idx})">刪除</button></td>
+    </tr>
+  `).join('');
+}
+
+function addItem() {
+  const n = document.getElementById('add-item-name').value.trim();
+  const p = parseInt(document.getElementById('add-item-price').value) || 0;
+  if(!n) return showToast("請填寫品名");
+  newItems.push({ name: n, price: p, opts: {rice:false, sugar:false, ice:false} });
+  document.getElementById('add-item-name').value = '';
+  document.getElementById('add-item-price').value = '';
+  renderNewItems();
+}
+
+function removeItem(idx) {
+  newItems.splice(idx, 1);
+  renderNewItems();
+}
+
+async function submitWish() {
+  const sname = document.getElementById('inp-store-name').value.trim();
+  const cat = document.getElementById('sel-category').value;
+  if(!sname) return showToast("請填寫店家名稱");
+  if(newItems.length === 0) return showToast("請至少填入一項想吃的品名！");
+  
+  const payload = { store_name: sname, category: cat, items: newItems };
+  
+  document.getElementById('loader').style.display='flex';
+  document.getElementById('loader').style.opacity='1';
+  
+  try {
+    const res = await fetch(`${SERVER}/api/wishes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) },
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error(await res.text());
+    
+    const data = await res.json();
+    showToast("🎉 許願成功！快去分享給同事吧！");
+    
+    // reset form
+    document.getElementById('inp-store-name').value = '';
+    newItems = []; renderNewItems();
+    
+    await loadWishes();
+    switchTab('list', document.querySelectorAll('.tab-btn')[0]);
+    
+    // 提示自動分享
+    setTimeout(()=>{ shareWish(data.id, sname); }, 800);
+    
+  } catch(e) {
+    alert("送出失敗：" + e.message);
+  } finally {
+    document.getElementById('loader').style.opacity='0';
+    setTimeout(()=>document.getElementById('loader').style.display='none', 300);
+  }
+}
+
+window.onload = init;
+</script>
+
+</body>
+</html>

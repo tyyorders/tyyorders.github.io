@@ -207,6 +207,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
   <button class="tab-btn" onclick="switchTab('history',this)">📜 歷史開團紀錄</button>
   <button class="tab-btn" onclick="switchTab('announce',this)">📢 系統公告</button>
   <button class="tab-btn" onclick="switchTab('stores',this)">🏪 店家資料維護</button>
+  <button class="tab-btn" onclick="switchTab('wishes',this)">🎈 許願池審核</button>
   <button class="tab-btn" onclick="switchTab('users',this)">👥 帳號管理</button>
 </nav>
 
@@ -457,6 +458,62 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
         </div>
         <div style="display:flex;justify-content:flex-end;margin-top:.75rem">
           <button class="btn btn-success btn-lg" id="btn-save-store" onclick="saveStore()">💾 儲存店家設定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TAB 許願池審核 ══ -->
+<div class="tab-panel" id="tab-wishes">
+  <div class="two-col">
+    <!-- 左：許願清單 -->
+    <div class="card">
+      <div class="card-header">
+        <span>🎈</span><span class="card-title">待處理許願清單</span>
+        <div style="margin-left:auto"><button class="btn btn-primary btn-sm" onclick="loadWishes()">🔄 整理</button></div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="store-list" id="wish-list">
+          <div style="padding:1rem;color:var(--text3);font-size:.88rem">讀取中...</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 右：編輯與審核 -->
+    <div class="card">
+      <div class="card-header"><span>✏️</span><span class="card-title" id="wish-edit-title">審核：請先從左側選擇</span></div>
+      <div class="card-body">
+        <div class="field-row">
+          <div class="field"><label>許願店家名稱</label><input type="text" id="inp-wish-sname"></div>
+          <div class="field"><label>提議分類</label>
+            <select id="sel-wish-cat">
+              <option>便當(葷食/素食)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-weight:700;font-size:.85rem;margin-bottom:.5rem;display:flex;justify-content:space-between">
+          <span>許願品項預覽 (管理者可直接修正)</span>
+          <span id="wish-author" style="font-size:.75rem;color:var(--text3)"></span>
+        </div>
+        <div class="tbl-wrap">
+          <table class="data-tbl">
+            <thead><tr><th>品名</th><th>價格</th><th>客製</th><th>操作</th></tr></thead>
+            <tbody id="tbody-wish-items">
+               <tr class="empty-row"><td colspan="4">尚無品項</td></tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div style="display:flex;gap:.5rem;margin-top:.75rem;align-items:center">
+          <input type="text" id="inp-wish-add-name" placeholder="新增品名" style="flex:1;padding:.4rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem">
+          <input type="number" id="inp-wish-add-price" placeholder="$" style="width:60px;padding:.4rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem">
+          <button class="btn btn-ghost btn-sm" onclick="addWishItem()">➕ 加入</button>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <button class="btn btn-danger" style="width:48%" onclick="submitWishStatus('rejected')" id="btn-wish-reject" disabled>❌ 駁回</button>
+          <button class="btn btn-success" style="width:48%" onclick="submitWishStatus('approved')" id="btn-wish-approve" disabled>✔️ 同意上架並入庫</button>
         </div>
       </div>
     </div>
@@ -868,6 +925,134 @@ function switchTab(id, btn) {
   document.getElementById('tab-'+id).classList.add('active');
   btn.classList.add('active');
   if (id === 'users') loadUsers();
+  if (id === 'wishes') loadWishes();
+}
+
+// ════════════════════════════
+// 許願池管理
+// ════════════════════════════
+let allWishes = [];
+let targetWishId = null;
+let currentWishItems = [];
+
+async function loadWishes() {
+  document.getElementById('wish-list').innerHTML = '<div style="padding:1rem;color:var(--text3);font-size:.88rem">讀取中...</div>';
+  try {
+    const res = await fetch(`${SERVER}/api/wishes`);
+    if(res.ok) {
+      allWishes = await res.json();
+      renderWishList();
+    }
+  } catch(e) { document.getElementById('wish-list').innerHTML = '讀取失敗'; }
+}
+
+function renderWishList() {
+  const ls = document.getElementById('wish-list');
+  ls.innerHTML = '';
+  const pendings = allWishes.filter(w => w.status === 'pending').sort((a,b) => (b.likes?b.likes.length:0) - (a.likes?a.likes.length:0));
+  
+  if(!pendings.length) ls.innerHTML = '<div style="padding:1rem;color:var(--text3);font-size:.88rem">目前沒有待處理的許願。</div>';
+  
+  pendings.forEach(w => {
+    let d = document.createElement('div');
+    d.className = 'store-list-item';
+    if(w.id === targetWishId) d.classList.add('active');
+    d.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:700">${w.store_name}</span>
+        <span style="font-size:0.75rem;background:#f1f5f9;padding:2px 6px;border-radius:12px;color:var(--text2)">❤️ ${w.likes?w.likes.length:0}</span>
+      </div>
+      <div style="font-size:0.75rem;color:var(--text3);margin-top:0.2rem">提案人: ${w.user_name}</div>
+    `;
+    d.onclick = () => {
+      document.querySelectorAll('#wish-list .store-list-item').forEach(x=>x.classList.remove('active'));
+      d.classList.add('active');
+      loadWishEditor(w.id);
+    };
+    ls.appendChild(d);
+  });
+}
+
+function loadWishEditor(wid) {
+  targetWishId = wid;
+  const w = allWishes.find(x => x.id === wid);
+  document.getElementById('wish-edit-title').textContent = `審核許願: ${w.store_name}`;
+  document.getElementById('inp-wish-sname').value = w.store_name;
+  document.getElementById('sel-wish-cat').value = w.category || '其他';
+  document.getElementById('wish-author').textContent = `提案人: ${w.user_name} | ${w.created_at}`;
+  
+  document.getElementById('btn-wish-reject').disabled = false;
+  document.getElementById('btn-wish-approve').disabled = false;
+  
+  currentWishItems = [...(w.items || [])];
+  renderWishItems();
+}
+
+function renderWishItems() {
+  const tb = document.getElementById('tbody-wish-items');
+  if(!currentWishItems.length) {
+    tb.innerHTML = '<tr class="empty-row"><td colspan="4">尚無品項</td></tr>';
+    return;
+  }
+  tb.innerHTML = currentWishItems.map((it, idx) => {
+    const oStr = [it.opts?.rice&&'飯量', it.opts?.sugar&&'甜度', it.opts?.ice&&'溫度'].filter(Boolean).join('、')||'無';
+    return `<tr>
+      <td>${it.name}</td><td>$${it.price}</td><td>${oStr}</td>
+      <td><button class="btn btn-danger" style="padding:.2rem .4rem;font-size:.7rem" onclick="removeWishItem(${idx})">刪</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function addWishItem() {
+  const n = document.getElementById('inp-wish-add-name').value.trim();
+  const p = parseInt(document.getElementById('inp-wish-add-price').value) || 0;
+  if(!n) return;
+  currentWishItems.push({ name: n, price: p, opts: {rice:false, sugar:false, ice:false} });
+  document.getElementById('inp-wish-add-name').value = '';
+  document.getElementById('inp-wish-add-price').value = '';
+  renderWishItems();
+}
+
+function removeWishItem(idx) {
+  currentWishItems.splice(idx, 1);
+  renderWishItems();
+}
+
+async function submitWishStatus(statusAction) {
+  if(!targetWishId) return;
+  const sname = document.getElementById('inp-wish-sname').value.trim();
+  const cat = document.getElementById('sel-wish-cat').value;
+  
+  const payload = {
+    status: statusAction,
+    store_name: sname,
+    category: cat,
+    items: currentWishItems
+  };
+  
+  try {
+    const res = await fetch(`${SERVER}/api/wishes/${targetWishId}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-user-pin": encodeURIComponent(adminPw) },
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error(await res.text());
+    
+    showToast(statusAction==='approved' ? `已核准✅ ${sname} 已自動加入店家庫！` : `已駁回❌`);
+    
+    document.getElementById('wish-edit-title').textContent = "審核：請先從左側選擇";
+    document.getElementById('inp-wish-sname').value = "";
+    document.getElementById('tbody-wish-items').innerHTML = '<tr class="empty-row"><td colspan="4">尚無品項</td></tr>';
+    document.getElementById('btn-wish-reject').disabled = true;
+    document.getElementById('btn-wish-approve').disabled = true;
+    targetWishId = null;
+    currentWishItems = [];
+    
+    // Refresh lists
+    await loadWishes();
+    await loadAllData(); // Reload stores so admin sees the new store
+    renderStoreList();
+  } catch(e) { alert("更新狀態失敗：" + e.message); }
 }
 
 // ════════════════════════════
