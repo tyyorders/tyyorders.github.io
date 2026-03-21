@@ -361,10 +361,12 @@ async function submitGroup() {
     creator: uName,
     store: storeName,
     target_date: tD,
-    dead_time: `${dD} ${dH}:${dM}`,
-    line_pay: lp,
-    line_pay_info: lpInf,
-    items: [], // 預設全開
+    deadline: `${dD} ${dH}:${dM}`,   // ← 統一用 deadline（與 order.html 一致）
+    allowed: [],  // 空 = 全開
+    opts: {
+      linepay: lp,
+      linepay_info: lpInf
+    }
   };
 
   // 後端 API 為覆寫全部 managed 陣列
@@ -376,11 +378,16 @@ async function submitGroup() {
       body: JSON.stringify(newGroups)
     });
     if(!res.ok) throw new Error(await res.text());
-    alert("發佈成功！");
-    selectedGroupId = grp.id; // 自動選取
+
+    // 產生分享連結
+    const loc = window.location;
+    const link = `${loc.protocol}//${loc.host}${loc.pathname.replace('group-admin','order')}?gid=${grp.id}`;
+    alert(`✅ 開團成功！\n\n分享連結：\n${link}`);
+
+    selectedGroupId = grp.id;
     await loadAllData();
     switchTab('manage', document.querySelectorAll('.tab-btn')[1]);
-  } catch(e) { alert(e.message); }
+  } catch(e) { alert("開團失敗：" + e.message); }
 }
 
 // ── 開團管理 ──
@@ -397,7 +404,7 @@ function renderMyGroups() {
       renderGroupOrders();
     };
     if (g.id === selectedGroupId) tr.classList.add('selected');
-    tr.innerHTML = `<td>${g.store}</td><td>${g.target_date}</td><td>${g.dead_time}</td>`;
+    tr.innerHTML = `<td>${g.store}</td><td>${g.target_date}</td><td>${g.deadline}</td>`;
     tb.appendChild(tr);
   });
 }
@@ -503,7 +510,7 @@ function generateBillingText() {
   lines.push(`===================`);
   lines.push(`💵 本團總計：$${grand}`);
   lines.push(`⚠️ 請將現金交給【${uName}】`);
-  if(g.line_pay && g.line_pay_info) lines.push(`💳 LINE Pay / 匯款：${g.line_pay_info}`);
+  if(g.opts?.linepay && g.opts?.linepay_info) lines.push(`💳 LINE Pay / 匯款：${g.opts.linepay_info}`);
 
   openText(`一鍵請款明細`, lines.join('\n'));
 }
@@ -596,9 +603,10 @@ async function saveMyStores() {
   myStores[sn] = { category: cat, items: items };
 
   try {
+    // ⭐ 加上 uName 外層包裝，讓後端知道這是誰的私房菜單
     const res = await fetch(`${SERVER}/api/stores`, {
       method: "POST", headers: { "Content-Type": "application/json", "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) },
-      body: JSON.stringify(myStores)
+      body: JSON.stringify({ [uName]: myStores })
     });
     if(!res.ok) throw new Error(await res.text());
     alert("店家資料儲存成功！");
