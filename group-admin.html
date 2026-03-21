@@ -51,7 +51,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
 .field label{display:block;font-size:.8rem;font-weight:700;color:var(--text2);margin-bottom:.3rem}
 .field input,.field select{width:100%;border:1.5px solid var(--border);border-radius:var(--rsm);padding:.45rem .75rem;font-size:.88rem;outline:none;}
 .field-row{display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap}
-.field-row .field{margin-bottom:0;flex:1;min-width:80px}
+.field-row .field{margin-bottom:1rem;flex:1;min-width:120px}
 
 .btn{display:inline-flex;align-items:center;gap:.35rem;padding:.45rem 1rem;border-radius:var(--rsm);font-size:.85rem;font-weight:700;cursor:pointer;border:none;transition:all .15s}
 .btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#15803d}
@@ -161,17 +161,17 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
         <div class="field-row">
           <div class="field"><label>取餐日</label><input type="date" id="inp-target"></div>
           <div class="field"><label>收單日期</label><input type="date" id="inp-dead-date"></div>
-          <div class="field" style="max-width:80px"><label>收單時</label>
+          <div class="field" style="max-width:120px"><label>收單時</label>
             <select id="inp-h"><option>09</option><option selected>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option></select>
           </div>
-          <div class="field" style="max-width:80px"><label>收單分</label>
+          <div class="field" style="max-width:120px"><label>收單分</label>
             <select id="inp-m"><option>00</option><option>15</option><option selected>30</option><option>45</option></select>
           </div>
         </div>
-        <div id="items-section" style="display:none" class="field">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-            <label style="margin:0">開放品項 <span style="font-size:.75rem;color:var(--text3);font-weight:normal">（至少選一項）</span></label>
-            <button type="button" class="btn btn-ghost" style="font-size:.75rem;padding:.2rem .6rem" onclick="toggleAllItems()">全選/全清</button>
+        <div id="items-section" style="display:none;margin-top:1rem" class="field">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem">
+            <label style="margin:0">開放品項 <span style="font-size:.78rem;color:var(--text3);font-weight:normal">（至少選一項）</span></label>
+            <button type="button" class="btn btn-ghost" style="font-size:.78rem;padding:.3rem .8rem" onclick="toggleAllItems()">全選 / 全清</button>
           </div>
           <div id="items-checkboxes" class="item-check-grid">
             <!-- 動態載入 -->
