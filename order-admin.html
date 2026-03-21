@@ -1541,7 +1541,8 @@ function renderCheckoutGroups() {
     return;
   }
   tbody.innerHTML = activeGroups.map(g=>{
-    const creatorTag = g.creator ? ` <span style="color:#1d4ed8;font-size:0.8rem">(${g.creator}揪團)</span>` : '';
+    const isSelf = g.creator === 'admin' || g.creator === '_admin_';
+    const creatorTag = (g.creator && !isSelf) ? ` <span style="color:#1d4ed8;font-size:0.8rem">(${g.creator}揪團)</span>` : '';
     return `
     <tr data-gid="${g.id}" onclick="loadCheckout('${g.id}',this)">
       <td><strong>${g.store}${creatorTag}</strong></td>
@@ -1601,7 +1602,6 @@ async function exportExcel() {
     const nm = cd.match(/filename\*=UTF-8''(.+)/);
     a.download = nm ? decodeURIComponent(nm[1]) : `對帳單_${currentCheckoutGid}.xlsx`;
     a.href = url; a.click();
-    setTimeout(()=>{ window.open(url,'_blank'); },300);
     setTimeout(()=>URL.revokeObjectURL(url), 10000);
     showToast('Excel 已下載', 'success');
   } catch(e) { showToast('匯出失敗：'+e.message,'error'); }

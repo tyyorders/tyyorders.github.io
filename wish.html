@@ -206,7 +206,7 @@
 <script>
 // --- 環境設定與憑證載入 ---
 const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-const SERVER = isLocal ? 'http://127.0.0.1:8000' : 'https://wmai-server-538622114704.asia-east1.run.app';
+const SERVER = isLocal ? 'http://127.0.0.1:8000' : 'https://lunch-order-173311611761.asia-east1.run.app';
 
 let sessionInfo = {};
 try { sessionInfo = JSON.parse(localStorage.getItem('order_session') || '{}'); } catch(e){}

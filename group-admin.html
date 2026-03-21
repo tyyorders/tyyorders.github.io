@@ -965,7 +965,6 @@ async function exportCsv() {
     // 預設檔名，若後端 Header 有提供即可擷取
     a.download = nm ? decodeURIComponent(nm[1]) : `對帳單_${selectedGroupId}.xlsx`;
     a.href = url; a.click();
-    setTimeout(()=>{ window.open(url,'_blank'); },300);
     setTimeout(()=>URL.revokeObjectURL(url), 10000);
     alert('Excel 對帳單已下載！');
   } catch(e) { alert('匯出失敗：'+e.message); }
