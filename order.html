@@ -57,13 +57,16 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
 /* ── 個人資料列 ── */
 .profile-bar{
   background:var(--surface);border-bottom:1px solid var(--border);
-  padding:0.75rem 2rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap
+  padding:0.65rem 1.25rem;display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;
+  overflow: hidden; /* 防止子元件溢出 */
 }
 .profile-label{font-size:0.82rem;color:var(--text-3);font-weight:600;white-space:nowrap}
 .profile-input{
   border:1.5px solid var(--border);border-radius:var(--radius-sm);
-  padding:0.35rem 0.75rem;font-size:0.9rem;font-family:inherit;color:var(--text);
-  outline:none;transition:border-color 0.15s;background:var(--bg);min-width:80px;width:120px
+  padding:0.35rem 0.6rem;font-size:0.88rem;font-family:inherit;color:var(--text);
+  outline:none;transition:border-color 0.15s;background:var(--bg);
+  min-width:60px;width:auto;max-width:130px;flex-shrink:1;
+  -webkit-appearance:none;appearance:none;
 }
 .profile-input:focus{border-color:var(--blue);background:white}
 .profile-hint{font-size:0.78rem;color:var(--text-3);margin-left:auto}
@@ -229,10 +232,13 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
   #login-wall > div { width: 90vw !important; padding: 2rem 1.5rem !important; }
 
   /* 個人資料列：改為彈性折行而非垂直死板堆疊 */
-  .profile-bar { flex-direction: row; flex-wrap: wrap; align-items: center; padding: 0.6rem 1rem; gap: 0.5rem; }
-  .profile-label { margin-bottom: 0; font-size: 0.8rem; }
-  .profile-input { width: 85px !important; font-size: 0.85rem; padding: 0.35rem 0.5rem; }
-  #inp-pin-show { width: 75px !important; font-size: 0.85rem; padding: 0.35rem 1.8rem 0.35rem 0.5rem; }
+  .profile-bar { 
+    flex-direction: row; flex-wrap: wrap; align-items: center; 
+    padding: 0.5rem 1rem; gap: 0.4rem; 
+  }
+  .profile-label { margin-bottom: 0; font-size: 0.78rem; }
+  .profile-input { width: auto !important; max-width: 100px !important; font-size: 0.82rem; padding: 0.3rem 0.4rem; }
+  #inp-pin-show { width: auto !important; max-width: 80px !important; font-size: 0.82rem; padding: 0.3rem 1.8rem 0.3rem 0.4rem; }
 
   /* 頁籤：容許橫向滑動，縮小間距防止截斷 */
   .tabs { padding: 0 0.5rem; gap: 0.5rem; overflow-x: auto; }
