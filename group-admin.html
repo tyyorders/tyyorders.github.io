@@ -274,7 +274,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
             <div class="field"><label>店家名稱 *</label><input type="text" id="store-name" placeholder="店家名稱"></div>
             <div class="field"><label>分類</label>
               <select id="store-cat">
-                <option>便當(葷食/素食)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
+                <option>便當(葷)</option><option>便當(素)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
               </select>
             </div>
           </div>
@@ -576,7 +576,7 @@ function renderStoreSelect() {
   });
 
   // 3. 按照分類產生 optgroup
-  const catOrder = ["便當(葷食/素食)", "便當", "飲料", "團購", "麵食", "速食", "其他"];
+  const catOrder = ["便當(葷)", "便當(素)", "便當", "飲料", "團購", "麵食", "速食", "其他"];
   const sortedCats = Object.keys(categories).sort((a,b) => {
     let ia = catOrder.indexOf(a), ib = catOrder.indexOf(b);
     if(ia===-1) ia=99; if(ib===-1) ib=99;

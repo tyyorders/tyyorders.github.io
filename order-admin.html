@@ -411,7 +411,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
       <div style="padding:0.5rem;border-bottom:1px solid var(--border);background:#f8fafc">
         <select id="sel-filter-category" onchange="renderStoreList()" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:0.35rem 0.5rem;font-size:0.85rem;outline:none;color:var(--text1)">
           <option value="">🎯 全部分類</option>
-          <option>便當(葷食/素食)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
+          <option>便當(葷)</option><option>便當(素)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
         </select>
       </div>
       <div class="card-body" style="padding:0;flex:1;overflow-y:auto;">
@@ -428,7 +428,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
           <div class="field"><label>店家名稱 *</label><input type="text" id="inp-sname" placeholder="例：一中便當"></div>
           <div class="field"><label>分類</label>
             <select id="sel-category">
-              <option>便當(葷食/素食)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
+              <option>便當(葷)</option><option>便當(素)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
             </select>
           </div>
           <div class="field"><label>電話</label><input type="text" id="inp-phone" placeholder="（選填）"></div>
@@ -494,7 +494,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
           <div class="field"><label>許願店家名稱</label><input type="text" id="inp-wish-sname"></div>
           <div class="field"><label>提議分類</label>
             <select id="sel-wish-cat">
-              <option>便當(葷食/素食)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
+              <option>便當(葷)</option><option>便當(素)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
             </select>
           </div>
         </div>
@@ -1351,7 +1351,7 @@ function refreshStoreSel() {
     categories[cat].push(sName);
   });
 
-  const catOrder = ["便當(葷食/素食)", "便當", "飲料", "團購", "麵食", "速食", "其他"];
+  const catOrder = ["便當(葷)", "便當(素)", "便當", "飲料", "團購", "麵食", "速食", "其他"];
   const sortedCats = Object.keys(categories).sort((a,b) => {
     let ia = catOrder.indexOf(a), ib = catOrder.indexOf(b);
     if(ia===-1) ia=99; if(ib===-1) ib=99;
@@ -1852,7 +1852,7 @@ function renderStoreList() {
 function newStore() {
   currentStoreKey = null;
   document.getElementById('inp-sname').value='';
-  document.getElementById('sel-category').value='便當';
+  document.getElementById('sel-category').value='便當(葷)';
   document.getElementById('inp-phone').value='';
   document.getElementById('opt-rice').checked=false;
   document.getElementById('opt-sug').checked=false;
@@ -1866,7 +1866,7 @@ function loadStoreEdit(sname) {
   currentStoreKey = sname;
   const d = stores[sname]||{};
   document.getElementById('inp-sname').value = sname;
-  document.getElementById('sel-category').value = d.category||'便當';
+  document.getElementById('sel-category').value = d.category||'便當(葷)';
   document.getElementById('inp-phone').value = d.phone||'';
   const opts = d.options||{};
   document.getElementById('opt-rice').checked = !!opts.rice;
