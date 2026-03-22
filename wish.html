@@ -333,30 +333,36 @@ function renderWishes() {
 async function toggleLike(e, wid) {
   const btn = e.currentTarget;
   if(btn.disabled) return;
+  
+  const w = allWishes.find(x=>x.id===wid);
+  if(w && w.likes && w.likes.includes(uName)) {
+    showToast("您已經為這個許願點過讚囉！", "warning");
+    return;
+  }
+  
   const originalHtml = btn.innerHTML;
   btn.innerHTML = '...';
   try {
     const res = await fetch(`${SERVER}/api/wishes/${wid}/like`, {
       method: "POST",
-      headers: { "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) }
+      headers: { "Content-Type": "application/json", "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) }
     });
-    if(!res.ok) throw new Error(await res.text());
+    if(!res.ok) {
+      const errText = await res.text();
+      console.error("API Error:", errText);
+      throw new Error(errText);
+    }
     const data = await res.json();
     
     // update memory & UI
-    const w = allWishes.find(x=>x.id===wid);
     if(w) {
       if(data.liked && !w.likes.includes(uName)) w.likes.push(uName);
-      else if(!data.liked && w.likes.includes(uName)) w.likes = w.likes.filter(x=>x!==uName);
     }
     document.getElementById(`like-cnt-${wid}`).textContent = data.likes;
-    if(data.liked) {
-      btn.classList.add('liked');
-      btn.innerHTML = `💖 <span id="like-cnt-${wid}">${data.likes}</span>`;
-    } else {
-      btn.classList.remove('liked');
-      btn.innerHTML = `🤍 <span id="like-cnt-${wid}">${data.likes}</span>`;
-    }
+    btn.classList.add('liked');
+    btn.innerHTML = `💖 <span id="like-cnt-${wid}">${data.likes}</span>`;
+    showToast("點讚成功！", "success");
+    
   } catch(e) {
     alert("點讚失敗，請稍後再試。");
     btn.innerHTML = originalHtml;
