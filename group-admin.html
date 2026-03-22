@@ -205,16 +205,6 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
         <button class="btn btn-primary btn-lg" onclick="submitGroup()">🚀 發布新揪團</button>
       </div>
     </div>
-    
-    <!-- 許願池審核清單 -->
-    <div class="card" style="max-width:600px;margin:1rem auto 0">
-      <div class="card-header"><span class="card-title">✨ 許願池審核清單</span></div>
-      <div class="card-body" style="padding:1rem">
-        <div id="wishes-container" style="display:flex;flex-direction:column;gap:1rem">
-          <div style="text-align:center;color:var(--text3);font-size:0.85rem">載入中...</div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- 我的開團管理 -->
@@ -534,7 +524,6 @@ async function loadAllData() {
     myGroups = gl.filter(g => g.creator === uName);
     renderMyGroups();
 
-    await loadWishes();
 
     const or = await fetch(`${SERVER}/api/orders`);
     allOrders = await or.json();
