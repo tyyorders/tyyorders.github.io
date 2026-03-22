@@ -1462,15 +1462,25 @@ function selectGroupRow(row, gid) {
 
 async function delGroup() {
   if (!selectedGroupId) return;
-  if (!confirm('確定要刪除選取的開團設定嗎？')) return;
-  activeGroups = activeGroups.filter(g=>String(g.id)!==String(selectedGroupId));
-  await fetch(`${SERVER}/api/groups`, { method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw}, body:JSON.stringify(activeGroups) });
-  selectedGroupId = null;
-  document.getElementById('btn-del-group').disabled = true;
-  document.getElementById('summary-bar').style.display = 'none';
-  showToast('已刪除', 'success');
-  renderGroupsTab();
-  renderCheckoutGroups();
+  if (!confirm('確定要強制刪除選取的開團與其內的所有訂單嗎？')) return;
+
+  try {
+    const res = await fetch(`${SERVER}/api/orders/group/${selectedGroupId}`, {
+      method: "DELETE",
+      headers: { "x-user-name": "admin", "x-user-pin": adminPw }
+    });
+    if (!res.ok) throw new Error(await res.text());
+
+    activeGroups = activeGroups.filter(g=>String(g.id)!==String(selectedGroupId));
+    selectedGroupId = null;
+    document.getElementById('btn-del-group').disabled = true;
+    document.getElementById('summary-bar').style.display = 'none';
+    showToast('已強制刪除開團與訂單', 'success');
+    renderGroupsTab();
+    renderCheckoutGroups();
+  } catch(e) {
+    showToast('刪除失敗：' + e.message, 'error');
+  }
 }
 
 function openEditGroupModal(gid) {
@@ -1625,7 +1635,10 @@ function openEditOrderModal(fname) {
   document.getElementById('edit-order-title').textContent = `修改訂單 — ${o.user_name}`;
 
   const itemSel = document.getElementById('eo-item');
-  const allowed = g?.allowed || [o.item_name];
+  let allowed = g?.allowed;
+  if (!allowed && g?.menu) allowed = g.menu.map(x => x.name);
+  if (!allowed) allowed = [o.item_name];
+
   itemSel.innerHTML = allowed.map(n=>`<option ${n===o.item_name?'selected':''}>${n}</option>`).join('');
   document.getElementById('eo-qty').value = o.qty||1;
   document.getElementById('eo-memo').value = '';
@@ -1653,8 +1666,8 @@ function updateEoOpts(forItem, setR, setS, setI) {
   const name = forItem || document.getElementById('eo-item').value;
   const g = editOrderGroup;
   const sd = stores[g?.store||'']||{};
-  const item = (sd.items||[]).find(i=>i.name===name)||{};
-  const opts = item.opts || sd.options||{};
+  const item = (sd.items||[]).find(i=>i.name===name) || (g?.menu||[]).find(i=>i.name===name) || {};
+  const opts = item.opts || sd.options || g?.opts || {};
   const rice=document.getElementById('eo-rice'), sug=document.getElementById('eo-sug'), ice=document.getElementById('eo-ice');
   rice.disabled=!opts.rice; sug.disabled=!opts.sugar; ice.disabled=!opts.ice;
   if(setR&&!rice.disabled) rice.value=setR;
@@ -1668,7 +1681,8 @@ async function saveEditOrder() {
   const g = editOrderGroup;
   const sd = stores[g?.store||'']||{};
   const itemName = document.getElementById('eo-item').value;
-  const price = (sd.items||[]).find(i=>i.name===itemName)?.price||0;
+  const priceItem = (sd.items||[]).find(i=>i.name===itemName) || (g?.menu||[]).find(i=>i.name===itemName);
+  const price = priceItem ? priceItem.price : 0;
   const rice=document.getElementById('eo-rice'), sug=document.getElementById('eo-sug'), ice=document.getElementById('eo-ice');
   const memo=document.getElementById('eo-memo').value.trim();
   const newOpts=[];

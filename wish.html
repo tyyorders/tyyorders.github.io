@@ -121,6 +121,22 @@
 
 <!-- 許願清單 -->
 <div class="tab-panel active" id="tab-list">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+    <div style="display:flex;gap:0.5rem;background:#f1f5f9;padding:0.3rem;border-radius:99px">
+      <button class="btn btn-ghost active" id="btn-filter-pending" style="padding:0.4rem 1rem;border-radius:99px;background:white;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.1)" onclick="setWishFilter('pending')">⏳ 審核中</button>
+      <button class="btn btn-ghost" id="btn-filter-done" style="padding:0.4rem 1rem;border-radius:99px;color:var(--text2)" onclick="setWishFilter('done')">✅ 已處理</button>
+    </div>
+    <div style="display:flex;gap:0.5rem">
+      <select id="sel-wish-cat-filter" onchange="renderWishes()" style="padding:0.4rem 0.6rem;border-radius:20px;border:1px solid var(--border);font-size:0.85rem;color:var(--text2);outline:none;background:white">
+        <option value="">🎯 全部分類</option>
+        <option>便當(葷)</option><option>便當(素)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
+      </select>
+      <select id="sel-wish-sort" onchange="renderWishes()" style="padding:0.4rem 0.6rem;border-radius:20px;border:1px solid var(--border);font-size:0.85rem;color:var(--text2);outline:none;background:white">
+        <option value="likes">❤️ 依讚數排序</option>
+        <option value="newest">🕒 依最新排序</option>
+      </select>
+    </div>
+  </div>
   <div class="card">
     <div id="wishes-container">
       <div style="padding:1.5rem;text-align:center;color:var(--text3);font-size:.9rem">尚無許願紀錄</div>
@@ -275,9 +291,27 @@ async function loadStores() {
       allStores = combined;
       
       const sel = document.getElementById('sel-exist-store');
-      const storeKeys = Object.keys(combined).sort((a,b) => a.localeCompare(b, 'zh-TW'));
-      sel.innerHTML = '<option value="">請選擇...</option>' + 
-        storeKeys.map(k => `<option value="${k}">${k}</option>`).join('');
+      let cats = {};
+      const catOrder = ["便當(葷)", "便當(素)", "便當", "飲料", "團購", "麵食", "速食", "其他"];
+      for (let k in combined) {
+        let c = combined[k].category || '其他';
+        if(!cats[c]) cats[c] = [];
+        cats[c].push(k);
+      }
+      let html = '<option value="">請選擇...</option>';
+      const sortedCats = Object.keys(cats).sort((a,b) => {
+        let ia = catOrder.indexOf(a), ib = catOrder.indexOf(b);
+        if(ia===-1) ia=99; if(ib===-1) ib=99;
+        return ia - ib;
+      });
+      sortedCats.forEach(c => {
+        html += `<optgroup label="✨ ${c}">`;
+        cats[c].sort((a,b) => a.localeCompare(b, 'zh-TW')).forEach(k => {
+          html += `<option value="${k}">${k}</option>`;
+        });
+        html += `</optgroup>`;
+      });
+      sel.innerHTML = html;
     } else {
       console.error("fetch API stores response not ok", res.status);
       document.getElementById('sel-exist-store').innerHTML = '<option value="">載入下拉清單失敗</option>';
@@ -288,6 +322,23 @@ async function loadStores() {
   }
 }
 
+let currentWishFilter = 'pending';
+function setWishFilter(f) {
+  currentWishFilter = f;
+  
+  const bp = document.getElementById('btn-filter-pending');
+  const bd = document.getElementById('btn-filter-done');
+  
+  if(f === 'pending') {
+    bp.style.background = 'white'; bp.style.color = 'var(--text)'; bp.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+    bd.style.background = 'transparent'; bd.style.color = 'var(--text2)'; bd.style.boxShadow = 'none';
+  } else {
+    bd.style.background = 'white'; bd.style.color = 'var(--text)'; bd.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+    bp.style.background = 'transparent'; bp.style.color = 'var(--text2)'; bp.style.boxShadow = 'none';
+  }
+  renderWishes();
+}
+
 function renderWishes() {
   const c = document.getElementById('wishes-container');
   if(!allWishes || allWishes.length === 0) {
@@ -295,7 +346,35 @@ function renderWishes() {
     return;
   }
   
-  c.innerHTML = allWishes.map(w => {
+  let filtered = allWishes.filter(w => {
+    if(currentWishFilter === 'pending') {
+      if(w.status !== 'pending') return false;
+    } else {
+      if(w.status === 'pending') return false;
+    }
+    const catF = document.getElementById('sel-wish-cat-filter').value;
+    if(catF && w.category !== catF) return false;
+    return true;
+  });
+  
+  const sortType = document.getElementById('sel-wish-sort').value;
+  filtered.sort((a,b) => {
+    if(sortType === 'likes') {
+      const aL = a.likes?a.likes.length:0;
+      const bL = b.likes?b.likes.length:0;
+      if(bL !== aL) return bL - aL;
+    }
+    const aT = new Date(a.created_at || 0).getTime();
+    const bT = new Date(b.created_at || 0).getTime();
+    return bT - aT;
+  });
+  
+  if(filtered.length === 0) {
+    c.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--text3);font-size:.9rem">目前沒有符合此分類的許願</div>';
+    return;
+  }
+  
+  c.innerHTML = filtered.map(w => {
     const isLiked = w.likes && w.likes.includes(uName);
     const likeCnt = w.likes ? w.likes.length : 0;
     
@@ -345,7 +424,7 @@ async function toggleLike(e, wid) {
   try {
     const res = await fetch(`${SERVER}/api/wishes/${wid}/like`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) }
+      headers: { "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) }
     });
     if(!res.ok) {
       const errText = await res.text();
