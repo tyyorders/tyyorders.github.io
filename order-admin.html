@@ -1058,7 +1058,7 @@ async function submitWishStatus(statusAction) {
     
     // Refresh lists
     await loadWishes();
-    await loadAllData(); // Reload stores so admin sees the new store
+    await refreshAll(); // Reload stores so admin sees the new store
     renderStoreList();
   } catch(e) { alert("更新狀態失敗：" + e.message); }
 }

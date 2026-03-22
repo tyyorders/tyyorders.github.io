@@ -184,9 +184,10 @@
             <tr class="empty-row"><td colspan="4" style="text-align:center;color:var(--text3);font-size:.8rem">尚未加入品項</td></tr>
           </tbody>
         </table>
-      </div> <!-- end wish-new-panel -->
+      </div>
+    </div> <!-- end wish-new-panel -->
 
-      <!-- 敲碗現有店家 -->
+    <!-- 敲碗現有店家 -->
       <div id="wish-exist-panel" style="display:none">
         <div class="field">
           <label>選擇想敲碗開團的店家 *</label>
@@ -318,10 +319,10 @@ function renderWishes() {
         <div style="font-size:0.85rem;color:var(--text2);margin-top:0.2rem">
           🍽️ 推薦品項：${summary || '未提供'}
         </div>
-        <div class="wish-actions">
-          <button class="btn-like ${isLiked?'liked':''}" onclick="toggleLike('${w.id}')" ${w.status!=='pending'?'disabled':''}>
-            ${isLiked?'💖':'🤍'} <span id="like-cnt-${w.id}">${likeCnt}</span>
-          </button>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.8rem;border-top:1px solid var(--border);padding-top:0.8rem">
+            <button class="btn btn-ghost ${isLiked?'liked':''}" style="padding:0.3rem 0.6rem;font-size:0.95rem;display:flex;align-items:center;gap:0.3rem" onclick="toggleLike(event, '${w.id}')" ${w.status!=='pending'?'disabled':''}>
+              ${isLiked?'💖':'🤍'} <span id="like-cnt-${w.id}">${w.likes?.length||0}</span>
+            </button>
           <button class="btn btn-ghost btn-sm" style="border-radius:99px" onclick="shareWish('${w.id}', '${w.store_name}')">📢 分享連結</button>
         </div>
       </div>
@@ -329,8 +330,8 @@ function renderWishes() {
   }).join('');
 }
 
-async function toggleLike(wid) {
-  const btn = document.querySelector(`#wish-${wid} .btn-like`);
+async function toggleLike(e, wid) {
+  const btn = e.currentTarget;
   if(btn.disabled) return;
   const originalHtml = btn.innerHTML;
   btn.innerHTML = '...';
