@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Console</title>
+<style>
+/* 刻意不用中文、樸素風格，降低外人辨識度 */
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --green: #22c55e;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --blue: #3b82f6;
+  --radius: 8px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Cascadia Code', 'Courier New', monospace;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── 登入畫面 ── */
+#auth-screen {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, #1e293b 0%, #0f172a 100%);
+}
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2.5rem 3rem;
+  width: 360px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.auth-logo {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  filter: grayscale(0.3);
+}
+.auth-title {
+  font-size: 1rem;
+  color: var(--text2);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 1.8rem;
+}
+.auth-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.7rem 1rem;
+  font-size: 1rem;
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+  margin-bottom: 1rem;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+.auth-input:focus { border-color: var(--blue); }
+.auth-btn {
+  width: 100%;
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+.auth-btn:hover { background: #2563eb; }
+.auth-err { color: var(--red); font-size: 0.8rem; margin-top: 0.75rem; min-height: 1.2em; }
+
+/* ── 主控台 ── */
+#console-app { display: none; flex-direction: column; min-height: 100vh; }
+.console-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.console-title {
+  font-size: 0.85rem;
+  color: var(--text2);
+  letter-spacing: 1px;
+}
+.console-badge {
+  background: var(--green);
+  color: #000;
+  font-size: 0.65rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.console-right { margin-left: auto; display: flex; gap: 0.75rem; align-items: center; }
+.btn {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  font-family: inherit;
+  transition: background 0.15s;
+  background: transparent;
+  color: var(--text2);
+}
+.btn:hover { background: var(--border); color: var(--text); }
+.btn-red { background: rgba(239,68,68,0.1); border-color: var(--red); color: var(--red); }
+.btn-red:hover { background: rgba(239,68,68,0.2); }
+.btn-green { background: rgba(34,197,94,0.1); border-color: var(--green); color: var(--green); }
+.btn-green:hover { background: rgba(34,197,94,0.2); }
+
+/* ── 主體內容 ── */
+.console-body { flex: 1; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; max-width: 900px; width: 100%; margin: 0 auto; }
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.section-header {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.section-title { font-size: 0.9rem; color: var(--text); font-weight: 700; }
+.section-sub { font-size: 0.75rem; color: var(--text2); margin-left: auto; }
+.section-body { padding: 1.25rem; }
+
+/* Operations 格 */
+.op-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.op-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.op-card-title { font-size: 0.88rem; font-weight: 700; color: var(--text); }
+.op-card-desc { font-size: 0.78rem; color: var(--text2); line-height: 1.5; }
+.op-card-action { margin-top: 0.5rem; }
+
+/* Log 輸出欄 */
+.log-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  font-size: 0.78rem;
+  color: var(--text2);
+  min-height: 100px;
+  max-height: 200px;
+  overflow-y: auto;
+  line-height: 1.8;
+}
+.log-line { margin-bottom: 0.1rem; }
+.log-line.ok { color: var(--green); }
+.log-line.err { color: var(--red); }
+.log-line.warn { color: var(--amber); }
+.log-line.info { color: var(--blue); }
+
+/* Stats 欄 */
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+.stat-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  text-align: center;
+}
+.stat-num { font-size: 1.8rem; font-weight: 900; color: var(--text); }
+.stat-label { font-size: 0.72rem; color: var(--text2); letter-spacing: 0.5px; margin-top: 0.2rem; }
+</style>
+</head>
+<body>
+
+<!-- ══ 登入牆 ══ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">⚙️</div>
+    <div class="auth-title">System Console</div>
+    <input class="auth-input" type="password" id="dev-pin"
+      placeholder="Access Key"
+      autocomplete="off"
+      onkeydown="if(event.key==='Enter') devAuth()">
+    <button class="auth-btn" onclick="devAuth()">AUTHENTICATE</button>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+</div>
+
+<!-- ══ 主控台 ══ -->
+<div id="console-app">
+  <header class="console-header">
+    <span>⚙️</span>
+    <span class="console-title">SYSTEM CONSOLE</span>
+    <span class="console-badge">DEV ONLY</span>
+    <div class="console-right">
+      <span id="conn-status" style="font-size:0.75rem;color:var(--text2)">● Connecting...</span>
+      <button class="btn" onclick="loadStats()">↻ Refresh</button>
+      <button class="btn" onclick="devLogout()">⏏ Logout</button>
+    </div>
+  </header>
+
+  <div class="console-body">
+
+    <!-- 資料庫統計 -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">📊 Database Stats</span>
+        <span class="section-sub" id="last-refresh">-</span>
+      </div>
+      <div class="section-body">
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-num" id="stat-orders">-</div><div class="stat-label">ORDERS</div></div>
+          <div class="stat-card"><div class="stat-num" id="stat-groups">-</div><div class="stat-label">GROUPS</div></div>
+          <div class="stat-card"><div class="stat-num" id="stat-users">-</div><div class="stat-label">USERS</div></div>
+          <div class="stat-card"><div class="stat-num" id="stat-stores">-</div><div class="stat-label">STORES</div></div>
+          <div class="stat-card"><div class="stat-num" id="stat-history">-</div><div class="stat-label">HISTORY</div></div>
+          <div class="stat-card"><div class="stat-num" id="stat-wishes">-</div><div class="stat-label">WISHES</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 維護操作 -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">🛠️ Maintenance Operations</span>
+      </div>
+      <div class="section-body">
+        <div class="op-grid">
+          <!-- 清除測試資料 -->
+          <div class="op-card">
+            <div class="op-card-title">🗑️ Reset Test Data</div>
+            <div class="op-card-desc">
+              清除所有訂單、開團、歷史紀錄、許願池資料。<br>
+              <strong style="color:var(--amber)">⚠️ 保留帳號與店家菜單</strong>
+            </div>
+            <div class="op-card-action">
+              <button class="btn btn-red" id="btn-reset" onclick="handleReset()">▶ EXECUTE RESET</button>
+            </div>
+          </div>
+          <!-- 清除所有使用者（含帳號）-->
+          <div class="op-card">
+            <div class="op-card-title">👤 Wipe All Users</div>
+            <div class="op-card-desc">
+              清除所有使用者帳號資料（慎用）。<br>
+              <strong style="color:var(--red)">⚠️ 不可逆，所有人需重新註冊</strong>
+            </div>
+            <div class="op-card-action">
+              <button class="btn btn-red" onclick="handleWipeUsers()">▶ WIPE USERS</button>
+            </div>
+          </div>
+          <!-- 健康檢查 -->
+          <div class="op-card">
+            <div class="op-card-title">🌐 API Health Check</div>
+            <div class="op-card-desc">
+              對 Cloud Run 伺服器發送 Ping，確認<br>
+              後端是否在線並回應正常。
+            </div>
+            <div class="op-card-action">
+              <button class="btn btn-green" onclick="handlePing()">▶ PING SERVER</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作日誌 -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">📋 Operation Log</span>
+        <button class="btn" onclick="clearLog()" style="margin-left:auto;font-size:0.72rem">Clear</button>
+      </div>
+      <div class="section-body">
+        <div class="log-box" id="log-box">
+          <div class="log-line info">[SYSTEM] Console initialized. Awaiting commands.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /console-body -->
+</div><!-- /console-app -->
+
+<script>
+const SERVER = 'https://lunch-order-173311611761.asia-east1.run.app';
+// 開發者密碼 ＝ 與管理員密碼相同（從環境變數拿），此處透過 API 驗證
+let devKey = '';
+
+// ── 登入 ──
+async function devAuth() {
+  const k = document.getElementById('dev-pin').value.trim();
+  const errEl = document.getElementById('auth-err');
+  if (!k) { errEl.textContent = 'Key required.'; return; }
+  errEl.textContent = '';
+  
+  try {
+    // 沿用管理員驗證路徑：只有正確的 ADMIN_PASSWORD 才能通過
+    const res = await fetch(`${SERVER}/api/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-pin': '' },
+      body: JSON.stringify({ role: 'admin', password: k }),
+      signal: AbortSignal.timeout(6000)
+    });
+    if (res.ok) {
+      devKey = k;
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('console-app').style.display = 'flex';
+      loadStats();
+    } else {
+      errEl.textContent = 'AUTH FAILED: Invalid key.';
+      document.getElementById('dev-pin').value = '';
+    }
+  } catch(e) {
+    errEl.textContent = `CONN ERROR: ${e.message}`;
+  }
+}
+
+function devLogout() {
+  devKey = '';
+  document.getElementById('dev-pin').value = '';
+  document.getElementById('console-app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+// ── Log 工具 ──
+function log(msg, type = 'info') {
+  const box = document.getElementById('log-box');
+  const t = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+  const d = document.createElement('div');
+  d.className = `log-line ${type}`;
+  d.textContent = `[${t}] ${msg}`;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+function clearLog() { document.getElementById('log-box').innerHTML = ''; }
+
+// ── 統計載入 ──
+async function loadStats() {
+  document.getElementById('conn-status').textContent = '● Fetching...';
+  document.getElementById('conn-status').style.color = 'var(--amber)';
+  try {
+    const [ordersR, groupsR, usersR, storesR, histR, wishR] = await Promise.all([
+      fetch(`${SERVER}/api/orders`),
+      fetch(`${SERVER}/api/groups`),
+      fetch(`${SERVER}/api/users`),
+      fetch(`${SERVER}/api/stores`),
+      fetch(`${SERVER}/api/admin_history`),
+      fetch(`${SERVER}/api/wishes`)
+    ]);
+    const orders  = await ordersR.json();
+    const groups  = await groupsR.json();
+    const stores  = await storesR.json();
+    const history = histR.ok ? await histR.json() : [];
+    const wishes  = wishR.ok ? await wishR.json() : [];
+
+    // users 格式是 [{name,unit,...}]
+    let usersData = [];
+    try { usersData = await usersR.json(); } catch {}
+
+    // stores 格式是 { owner: { storeName: {...} } }
+    let storeCount = 0;
+    Object.values(stores).forEach(s => storeCount += Object.keys(s).length);
+
+    document.getElementById('stat-orders').textContent  = Array.isArray(orders)  ? orders.map(o => o[1] ? 1 : 0).reduce((a,b) => a+b, orders.length) : '?';
+    document.getElementById('stat-groups').textContent  = Array.isArray(groups)  ? groups.length : '?';
+    document.getElementById('stat-users').textContent   = usersData.length ?? '?';
+    document.getElementById('stat-stores').textContent  = storeCount;
+    document.getElementById('stat-history').textContent = Array.isArray(history) ? history.length : '?';
+    document.getElementById('stat-wishes').textContent  = Array.isArray(wishes)  ? wishes.length : '?';
+
+    document.getElementById('last-refresh').textContent = 'Last: ' + new Date().toLocaleTimeString('zh-TW');
+    document.getElementById('conn-status').textContent  = '● Online';
+    document.getElementById('conn-status').style.color  = 'var(--green)';
+    log('Stats refreshed.', 'ok');
+  } catch(e) {
+    document.getElementById('conn-status').textContent = '● Offline';
+    document.getElementById('conn-status').style.color = 'var(--red)';
+    log('Stats fetch failed: ' + e.message, 'err');
+  }
+}
+
+// ── Reset ──
+let _resetStage = 0;
+let _resetTimer = null;
+function handleReset() {
+  const btn = document.getElementById('btn-reset');
+  if (_resetStage === 0) {
+    _resetStage = 1;
+    btn.textContent = '⚠️ CONFIRM RESET?';
+    btn.style.background = 'rgba(239,68,68,0.35)';
+    log('RESET requested. Click again within 8s to confirm.', 'warn');
+    _resetTimer = setTimeout(() => {
+      _resetStage = 0;
+      btn.textContent = '▶ EXECUTE RESET';
+      btn.style.background = '';
+      log('RESET cancelled (timeout).', 'warn');
+    }, 8000);
+    return;
+  }
+  clearTimeout(_resetTimer);
+  _resetStage = 0;
+  btn.textContent = '▶ EXECUTE RESET';
+  btn.style.background = '';
+  executeReset();
+}
+
+async function executeReset() {
+  log('Executing RESET...', 'warn');
+  try {
+    const res = await fetch(`${SERVER}/api/reset`, {
+      method: 'DELETE',
+      headers: { 'x-user-pin': encodeURIComponent(devKey) }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      log(`RESET complete. ${data.message}`, 'ok');
+      loadStats();
+    } else {
+      log(`RESET failed: ${data.detail}`, 'err');
+    }
+  } catch(e) {
+    log('RESET error: ' + e.message, 'err');
+  }
+}
+
+// ── Wipe Users ──
+async function handleWipeUsers() {
+  const sure = prompt('此操作將刪除所有使用者帳號。\n請輸入 "CONFIRM" 以繼續：');
+  if (sure !== 'CONFIRM') { log('WipeUsers cancelled.', 'warn'); return; }
+  log('Wiping all users...', 'warn');
+  try {
+    const res = await fetch(`${SERVER}/api/reset/users`, {
+      method: 'DELETE',
+      headers: { 'x-user-pin': encodeURIComponent(devKey) }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      log(`WipeUsers complete. ${data.message}`, 'ok');
+      loadStats();
+    } else {
+      log(`WipeUsers failed: ${data.detail}`, 'err');
+    }
+  } catch(e) {
+    log('WipeUsers error: ' + e.message, 'err');
+  }
+}
+
+// ── Ping ──
+async function handlePing() {
+  log('Pinging server...', 'info');
+  const t0 = Date.now();
+  try {
+    const res = await fetch(`${SERVER}/api/groups`, { signal: AbortSignal.timeout(5000) });
+    const ms = Date.now() - t0;
+    if (res.ok) {
+      log(`PING OK — ${ms}ms`, 'ok');
+      document.getElementById('conn-status').textContent = `● Online (${ms}ms)`;
+      document.getElementById('conn-status').style.color = 'var(--green)';
+    } else {
+      log(`PING failed — HTTP ${res.status}`, 'err');
+    }
+  } catch(e) {
+    log('PING timeout/error: ' + e.message, 'err');
+    document.getElementById('conn-status').textContent = '● Offline';
+    document.getElementById('conn-status').style.color = 'var(--red)';
+  }
+}
+</script>
+
+</body>
+</html>
