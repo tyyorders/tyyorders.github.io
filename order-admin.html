@@ -1207,8 +1207,7 @@ function setOnline() {
   if (wasOffline && _initDone) {
     showToast('✅ 伺服器已重新連線，正在重新整理...', 'success');
     setTimeout(() => refreshAll(), 100);
-    clearInterval(pingTimer);
-    pingTimer = setInterval(pingServer, 10000);
+    if(typeof pingTimer !== 'undefined') clearInterval(pingTimer);
   }
 }
 
@@ -1220,8 +1219,7 @@ function setOffline() {
   lockButtons(true);
   if (wasOnline) {
     showToast('⚠️ 伺服器連線中斷，系統已鎖定', 'warning');
-    clearInterval(pingTimer);
-    pingTimer = setInterval(pingServer, 3000);
+    if(typeof pingTimer !== 'undefined') clearInterval(pingTimer);
   }
 }
 
@@ -2036,8 +2034,7 @@ function init() {
     _initDone = true; // 第一次 ping 完成後才允許斷線恢復觸發 refreshAll
     if (isOnline) refreshAll();
     // 啟動定時偵測（在 refreshAll 開始後才啟動，避免競爭）
-    if (pingTimer) clearInterval(pingTimer);
-    pingTimer = setInterval(pingServer, 10000);
+    if(typeof pingTimer !== 'undefined') clearInterval(pingTimer);
   });
 }
 
