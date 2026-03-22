@@ -400,7 +400,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
 <div class="tab-panel" id="tab-stores">
   <div class="two-col">
     <!-- 左：店家清單 -->
-    <div class="card">
+    <div class="card" style="display:flex;flex-direction:column">
       <div class="card-header">
         <span>🏪</span><span class="card-title">店家清單</span>
         <div style="margin-left:auto;display:flex;gap:.4rem">
@@ -408,7 +408,13 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
           <button class="btn btn-danger btn-sm" id="btn-del-store" onclick="delStore()">🗑️ 刪除</button>
         </div>
       </div>
-      <div class="card-body" style="padding:0">
+      <div style="padding:0.5rem;border-bottom:1px solid var(--border);background:#f8fafc">
+        <select id="sel-filter-category" onchange="renderStoreList()" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:0.35rem 0.5rem;font-size:0.85rem;outline:none;color:var(--text1)">
+          <option value="">🎯 全部分類</option>
+          <option>便當(葷食/素食)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
+        </select>
+      </div>
+      <div class="card-body" style="padding:0;flex:1;overflow-y:auto;">
         <div class="store-list" id="store-list">
           <div style="padding:1rem;color:var(--text3);font-size:.88rem">讀取中...</div>
         </div>
@@ -450,7 +456,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
         <div style="font-size:.82rem;font-weight:700;color:var(--amber);margin-bottom:.3rem">▼ 菜單品項（雙擊個別修改）</div>
         <div class="tbl-wrap">
           <table class="data-tbl" id="tbl-menu">
-            <thead><tr><th>品名</th><th>價格</th><th>客製選項</th></tr></thead>
+            <thead><tr><th>品名</th><th style="width:70px">價格</th><th style="width:120px">客製選項</th><th style="width:40px;text-align:center">操作</th></tr></thead>
             <tbody id="tbody-menu">
               <tr class="empty-row"><td colspan="4">尚無品項</td></tr>
             </tbody>
@@ -1831,8 +1837,14 @@ function clearAnn() {
 // ════════════════════════════
 function renderStoreList() {
   const list = document.getElementById('store-list');
-  const keys = Object.keys(stores);
-  if (!keys.length) { list.innerHTML='<div style="padding:1rem;color:var(--text3);font-size:.88rem">尚無店家資料</div>'; return; }
+  const catFilter = document.getElementById('sel-filter-category')?.value || '';
+  
+  let keys = Object.keys(stores);
+  if (catFilter) {
+    keys = keys.filter(k => stores[k] && stores[k].category === catFilter);
+  }
+  
+  if (!keys.length) { list.innerHTML='<div style="padding:1rem;color:var(--text3);font-size:.88rem">尚無符合條件的店家</div>'; return; }
   list.innerHTML = keys.map(k=>`
     <div class="store-list-item ${k===currentStoreKey?'active':''}" onclick="loadStoreEdit('${k}')">${k}</div>`).join('');
 }
