@@ -932,8 +932,7 @@ function setOnline() {
   if (wasOffline && _initDone) {
     showToast('✅ 伺服器已重新連線！', 'success');
     refreshAll();
-    clearInterval(pingTimer);
-    pingTimer = setInterval(pingServer, 10000);
+    if(typeof pingTimer !== 'undefined') clearInterval(pingTimer);
   }
 }
 
@@ -947,12 +946,9 @@ function setOffline() {
   document.getElementById('btn-submit').disabled = true;
   if (wasOnline) {
     showToast('⚠️ 伺服器連線中斷，系統已鎖定', 'warning');
-    clearInterval(pingTimer);
-    pingTimer = setInterval(pingServer, 3000);
+    if(typeof pingTimer !== 'undefined') clearInterval(pingTimer);
   }
 }
-
-pingTimer = setInterval(pingServer, 10000);
 
 // ═══════════════════════════════════════
 // 讀取所有資料
