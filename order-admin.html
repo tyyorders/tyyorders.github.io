@@ -222,10 +222,17 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
       </div>
       <div class="card-body">
         <div class="field">
-          <label>選擇店家 *</label>
-          <select id="sel-store" onchange="onStoreSelect()">
-            <option value="">── 請選擇 ──</option>
-          </select>
+          <label>選擇開團店家 *</label>
+          <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
+            <select id="sel-launch-cat" onchange="renderLaunchStores()" style="flex:1;padding:0.4rem;border-radius:6px;border:1px solid var(--border);outline:none;background:white">
+              <option value="">🎯 全部分類</option>
+              <option>便當(葷)</option><option>便當(素)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
+            </select>
+            <input type="text" id="inp-launch-search" oninput="renderLaunchStores()" placeholder="🔍 搜尋店名/品項..." style="flex:1;padding:0.4rem;border-radius:6px;border:1px solid var(--border);outline:none">
+          </div>
+          <div id="launch-store-list" style="margin-bottom:1rem;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:#f8fafc">
+             <div style="padding:1rem;color:var(--text3);text-align:center;font-size:0.85rem">讀取中...</div>
+          </div>
         </div>
         <div class="field-row">
           <div class="field">
@@ -1339,39 +1346,51 @@ async function performAutoArchiving() {
 // ════════════════════════════
 // TAB1：訂餐設定
 // ════════════════════════════
-function refreshStoreSel() {
-  const sel = document.getElementById('sel-store');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">── 請選擇 ──</option>';
+let launchSelectedStore = ""; // storeName
 
-  const categories = {};
+function renderLaunchStores() {
+  const listContainer = document.getElementById('launch-store-list');
+  const catFilter = document.getElementById('sel-launch-cat').value;
+  const searchKwd = document.getElementById('inp-launch-search').value.trim().toLowerCase();
+  
+  const allList = [];
   Object.keys(stores).forEach(sName => {
-    const cat = stores[sName].category || '其他';
-    if (!categories[cat]) categories[cat] = [];
-    categories[cat].push(sName);
+    const s = stores[sName];
+    allList.push({ name: sName, cat: s.category || '其他', items: s.items||[] });
   });
 
-  const catOrder = ["便當(葷)", "便當(素)", "便當", "飲料", "團購", "麵食", "速食", "其他"];
-  const sortedCats = Object.keys(categories).sort((a,b) => {
-    let ia = catOrder.indexOf(a), ib = catOrder.indexOf(b);
-    if(ia===-1) ia=99; if(ib===-1) ib=99;
-    return ia - ib;
+  const filtered = allList.filter(s => {
+    if(catFilter && s.cat !== catFilter) return false;
+    if(searchKwd) {
+      if(s.name.toLowerCase().indexOf(searchKwd) !== -1) return true;
+      if(s.items.some(i => i.name.toLowerCase().indexOf(searchKwd) !== -1)) return true;
+      return false;
+    }
+    return true;
   });
 
-  sortedCats.forEach(cat => {
-    let grp = document.createElement('optgroup');
-    grp.label = `🏷️ ${cat}`;
-    categories[cat].forEach(s => {
-      let opt = new Option(s, s);
-      if (s === cur) opt.selected = true;
-      grp.appendChild(opt);
-    });
-    sel.appendChild(grp);
-  });
+  if(!filtered.length) {
+    listContainer.innerHTML = '<div style="padding:1rem;color:var(--text3);text-align:center;font-size:0.85rem">沒有符合的店家</div>';
+    return;
+  }
+
+  filtered.sort((a,b) => a.cat.localeCompare(b.cat, 'zh-TW') || a.name.localeCompare(b.name, 'zh-TW'));
+
+  listContainer.innerHTML = filtered.map(s => {
+    const isSel = launchSelectedStore === s.name;
+    return `
+    <div onclick="onStoreSelect('${s.name}')" style="padding:0.6rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;background:${isSel?'#eff6ff':'transparent'}">
+      <div style="flex:1;font-weight:700;color:${isSel?'var(--blue)':'inherit'}">${s.name}</div>
+      <div style="font-size:0.75rem;color:var(--text3)">${s.cat}</div>
+    </div>`;
+  }).join('');
 }
 
-function onStoreSelect() {
-  const store = document.getElementById('sel-store').value;
+function onStoreSelect(storeName) {
+  if (storeName !== undefined) launchSelectedStore = storeName;
+  renderLaunchStores();
+  
+  const store = launchSelectedStore;
   const grid = document.getElementById('item-check-grid');
   if (!store) { grid.innerHTML = '<div style="color:var(--text3);font-size:.85rem;padding:.5rem">請先選擇店家</div>'; return; }
   const items = (stores[store]?.items || []);
@@ -1387,8 +1406,12 @@ function onStoreSelect() {
   document.getElementById('inp-lp-info').value = lpInfo;
 }
 
+function refreshStoreSel() {
+  renderLaunchStores();
+}
+
 async function submitGroup() {
-  const store = document.getElementById('sel-store').value;
+  const store = launchSelectedStore;
   if (!store) return showToast('請選擇店家', 'warning');
 
   const targetStr   = document.getElementById('inp-target').value;
@@ -1467,7 +1490,7 @@ async function delGroup() {
   try {
     const res = await fetch(`${SERVER}/api/orders/group/${selectedGroupId}`, {
       method: "DELETE",
-      headers: { "x-user-name": "admin", "x-user-pin": adminPw }
+      headers: { "x-user-name": encodeURIComponent("admin"), "x-user-pin": encodeURIComponent(adminPw) }
     });
     if (!res.ok) throw new Error(await res.text());
 
@@ -1636,8 +1659,12 @@ function openEditOrderModal(fname) {
 
   const itemSel = document.getElementById('eo-item');
   let allowed = g?.allowed;
-  if (!allowed && g?.menu) allowed = g.menu.map(x => x.name);
-  if (!allowed) allowed = [o.item_name];
+  if ((!allowed || allowed.length === 0) && g?.menu) allowed = g.menu.map(x => x.name);
+  if (!allowed || allowed.length === 0 || !allowed.includes(o.item_name)) {
+    // 確保原本有點到的品項一定會出現
+    const fallback = allowed && allowed.length > 0 ? allowed : [];
+    allowed = [o.item_name, ...fallback.filter(x => x !== o.item_name)];
+  }
 
   itemSel.innerHTML = allowed.map(n=>`<option ${n===o.item_name?'selected':''}>${n}</option>`).join('');
   document.getElementById('eo-qty').value = o.qty||1;

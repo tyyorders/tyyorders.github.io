@@ -165,8 +165,17 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
       <div class="card-header"><span class="card-title">發布新的揪團</span></div>
       <div class="card-body">
         <div class="field">
-          <label>選擇店家 (包含官方預設與您的私房菜單)</label>
-          <select id="sel-store" onchange="onStoreChange()"><option value="">── 請選擇 ──</option></select>
+          <label>選擇店家 (包含官方預設與您的私房菜單) *</label>
+          <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
+            <select id="sel-launch-cat" onchange="renderLaunchStores()" style="flex:1;padding:0.4rem;border-radius:6px;border:1px solid var(--border);outline:none;background:white">
+              <option value="">🎯 全部分類</option>
+              <option>便當(葷)</option><option>便當(素)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
+            </select>
+            <input type="text" id="inp-launch-search" oninput="renderLaunchStores()" placeholder="🔍 搜尋店名/品項..." style="flex:1;padding:0.4rem;border-radius:6px;border:1px solid var(--border);outline:none">
+          </div>
+          <div id="launch-store-list" style="margin-bottom:1rem;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:#f8fafc">
+             <div style="padding:1rem;color:var(--text3);text-align:center;font-size:0.85rem">讀取中...</div>
+          </div>
         </div>
         <div class="field-row">
           <div class="field"><label>取餐日</label><input type="date" id="inp-target"></div>
@@ -193,7 +202,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
           </label>
           <input type="text" id="inp-lp-info" placeholder="貼上您的 LINE 收款連結或銀行帳號 (選填)">
         </div>
-        <button class="btn btn-primary btn-lg" onclick="submitGroup()">🚀 發布並產生連結</button>
+        <button class="btn btn-primary btn-lg" onclick="submitGroup()">🚀 發布新揪團</button>
       </div>
     </div>
     
@@ -314,8 +323,8 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
     <div class="card">
       <div class="card-header">
         <span class="card-title">🗂️ 我的歷史開團紀錄</span>
+        <span style="font-size:0.78rem;color:var(--text3);margin-left:0.5rem">雙擊無效、點擊單擊可選取</span>
         <button class="btn btn-ghost btn-sm" onclick="loadHistory()" style="margin-left:auto">🔄 重新載入</button>
-        <button class="btn btn-amber btn-sm" onclick="archiveExpiredGroups()" style="margin-left:.5rem">📦 手動歸檔過期團</button>
       </div>
       <div class="card-body" style="padding:0">
         <div class="tbl-wrap">
@@ -326,8 +335,9 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
             </tbody>
           </table>
         </div>
-        <div style="padding:0.75rem 1rem;font-size:0.78rem;color:var(--text3);background:#f8fafc;border-top:1px solid var(--border)">
-          ℹ️ 歷史紀錄來自「手動刪除此團」後的自動封存。若有已過取餐日但尚未刪除的開團，請點「手動歸檔過期團」整理。
+        <div style="padding:0.75rem 1rem;font-size:0.78rem;background:#f8fafc;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <span style="color:var(--text3)">ℹ️ 已過取餐日的開團會在重新載入此頁時自動歸檔於此。</span>
+          <button class="btn btn-danger btn-sm" id="btn-del-hist" onclick="deleteHistoryRecord()" disabled>🗑️ 刪除這筆歷史</button>
         </div>
       </div>
     </div>
@@ -463,7 +473,7 @@ async function loadHistory() {
     }
     mine.sort((a,b) => (b.target_date||'').localeCompare(a.target_date||''));
     tb.innerHTML = mine.map(g => `
-      <tr>
+      <tr data-hid="${g.id}" onclick="selectHist(this, '${g.id}')" style="cursor:pointer">
         <td>${g.store||g.store_name||''}</td>
         <td>${g.target_date||'不明'}${getWdStr(g.target_date)}</td>
         <td>${g.deadline||''}</td>
@@ -478,24 +488,28 @@ async function loadHistory() {
   }
 }
 
-// 手動把已過期但尚未刪除的開團歸檔
-async function archiveExpiredGroups() {
-  const today = new Date().toISOString().slice(0, 10);
-  const expired = myGroups.filter(g => g.target_date && g.target_date < today);
-  if (!expired.length) { alert('目前沒有已過取餐日的開團需要歸檔！'); return; }
-  if (!confirm(`發現 ${expired.length} 筆過期開團，歸檔後將從有效清單中移除。\n確定繼續嗎？`)) return;
-  
-  const newGroups = myGroups.filter(g => !(g.target_date && g.target_date < today));
+let selectedHistId = null;
+function selectHist(row, hid) {
+  document.querySelectorAll('#tbody-history tr').forEach(r=>r.classList.remove('selected'));
+  row.classList.add('selected');
+  selectedHistId = hid;
+  document.getElementById('btn-del-hist').disabled = false;
+}
+
+async function deleteHistoryRecord() {
+  if(!selectedHistId) return;
+  if(!confirm('確定要永久刪除這筆歷史紀錄嗎？刪除後無法恢復。')) return;
   try {
-    const res = await fetch(`${SERVER}/api/groups`, {
-      method: "POST", headers: { "Content-Type":"application/json", "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) },
-      body: JSON.stringify(newGroups)
+    const res = await fetch(`${SERVER}/api/admin_history/${selectedHistId}`, {
+      method: "DELETE",
+      headers: { "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) }
     });
-    if (!res.ok) throw new Error(await res.text());
-    myGroups = newGroups;
-    renderMyGroups();
-    alert(`✅ 已成功歸檔 ${expired.length} 筆過期開團！\n您可切換至「我的歷史開團」查看。`);
-  } catch(e) { alert('歸檔失敗：' + e.message); }
+    if(!res.ok) throw new Error(await res.text());
+    showToast('歷史紀錄已刪除', 'success');
+    selectedHistId = null;
+    document.getElementById('btn-del-hist').disabled = true;
+    loadHistory();
+  } catch(e) { showToast('刪除失敗: '+e.message, 'error'); }
 }
 
 function switchTab(id, btn) {
@@ -512,7 +526,7 @@ async function loadAllData() {
     myStores = allStores[uName] || {};
     
     // 裝填發起團購的 Store 下拉與私房店清單
-    renderStoreSelect();
+    renderLaunchStores();
     renderMyStoresList();
 
     const gr = await fetch(`${SERVER}/api/groups`);
@@ -551,53 +565,59 @@ async function loadAllData() {
   }
 }
 
+let launchSelectedStore = ""; // owner|storeName
+
 // 根據分類整理店家選單
-function renderStoreSelect() {
-  const sel = document.getElementById('sel-store');
-  sel.innerHTML = '<option value="">── 請選擇店家 ──</option>';
+function renderLaunchStores() {
+  const listContainer = document.getElementById('launch-store-list');
+  const catFilter = document.getElementById('sel-launch-cat').value;
+  const searchKwd = document.getElementById('inp-launch-search').value.trim().toLowerCase();
   
-  // 建立分類群組
-  const categories = {};
-  
-  // 1. 塞入官方店家
+  const allList = [];
   Object.keys(allStores['_admin_']||{}).forEach(storeName => {
     const store = allStores['_admin_'][storeName];
-    const cat = store.category || '其他';
-    if (!categories[cat]) categories[cat] = [];
-    categories[cat].push({ name: storeName, owner: '_admin_', isOfficial: true });
+    allList.push({ name: storeName, owner: '_admin_', isOfficial: true, cat: store.category || '其他', items: store.items||[] });
   });
   
-  // 2. 塞入私房店家
   Object.keys(myStores||{}).forEach(storeName => {
     const store = myStores[storeName];
-    const cat = store.category || '其他';
-    if (!categories[cat]) categories[cat] = [];
-    categories[cat].push({ name: storeName, owner: uName, isOfficial: false });
+    allList.push({ name: storeName, owner: uName, isOfficial: false, cat: store.category || '其他', items: store.items||[] });
   });
 
-  // 3. 按照分類產生 optgroup
-  const catOrder = ["便當(葷)", "便當(素)", "便當", "飲料", "團購", "麵食", "速食", "其他"];
-  const sortedCats = Object.keys(categories).sort((a,b) => {
-    let ia = catOrder.indexOf(a), ib = catOrder.indexOf(b);
-    if(ia===-1) ia=99; if(ib===-1) ib=99;
-    return ia - ib;
+  const filtered = allList.filter(s => {
+    if(catFilter && s.cat !== catFilter) return false;
+    if(searchKwd) {
+      if (s.name.toLowerCase().indexOf(searchKwd) !== -1) return true;
+      if (s.items.some(i => i.name.toLowerCase().indexOf(searchKwd) !== -1)) return true;
+      return false;
+    }
+    return true;
   });
 
-  sortedCats.forEach(cat => {
-    let grp = document.createElement('optgroup');
-    grp.label = `🏷️ ${cat}`;
-    categories[cat].forEach(s => {
-      let suffix = s.isOfficial ? " (官方)" : " (私房)";
-      let opt = new Option(`${s.name}${s.isOfficial?'':suffix}`, `${s.owner}|${s.name}`);
-      grp.appendChild(opt);
-    });
-    sel.appendChild(grp);
-  });
+  if(!filtered.length) {
+    listContainer.innerHTML = '<div style="padding:1rem;color:var(--text3);text-align:center;font-size:0.85rem">沒有符合的店家</div>';
+    return;
+  }
+
+  filtered.sort((a,b) => a.cat.localeCompare(b.cat, 'zh-TW') || a.name.localeCompare(b.name, 'zh-TW'));
+
+  listContainer.innerHTML = filtered.map(s => {
+    const val = `${s.owner}|${s.name}`;
+    const badge = s.isOfficial ? '<span class="tag tag-approved" style="font-size:0.7rem;padding:0.1rem 0.4rem;margin-left:0.5rem">官方</span>' : '<span class="tag tag-pending" style="font-size:0.7rem;padding:0.1rem 0.4rem;margin-left:0.5rem;background:#fbcfe8;color:#9d174d">私房</span>';
+    const isSel = launchSelectedStore === val;
+    return `<div onclick="onStoreChange('${val}')" style="padding:0.6rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;background:${isSel?'#eff6ff':'transparent'}">
+      <div style="flex:1;font-weight:700;color:${isSel?'var(--blue)':'inherit'}">${s.name}${badge}</div>
+      <div style="font-size:0.75rem;color:var(--text3)">${s.cat}</div>
+    </div>`;
+  }).join('');
 }
 
 // ⭐ 選擇店家後即時更新品項勾選區塊
-function onStoreChange() {
-  const v = document.getElementById('sel-store').value;
+function onStoreChange(val) {
+  if (val !== undefined) launchSelectedStore = val;
+  renderLaunchStores(); // re-render to reflect selection highlight
+  
+  const v = launchSelectedStore;
   const sec = document.getElementById('items-section');
   const box = document.getElementById('items-checkboxes');
   if (!v) { sec.style.display = 'none'; box.innerHTML = ''; return; }
@@ -631,8 +651,8 @@ function toggleAllItems() {
 
 // ── 發起團購 ──
 async function submitGroup() {
-  const v = document.getElementById('sel-store').value;
-  if(!v) return alert("請選擇店家");
+  const v = launchSelectedStore;
+  if(!v) return showToast("請選擇上方要開團的店家", "warning");
   const [owner, storeName] = v.split('|');
   const tD = document.getElementById('inp-target').value;
   const dD = document.getElementById('inp-dead-date').value;
@@ -685,15 +705,12 @@ async function submitGroup() {
     });
     if(!res.ok) throw new Error(await res.text());
 
-    // 產生分享連結
-    const loc = window.location;
-    const link = `${loc.protocol}//${loc.host}${loc.pathname.replace('group-admin','order')}?gid=${grp.id}`;
-    alert(`✅ 開團成功！\n\n分享連結：\n${link}`);
+    showToast("發布成功！可至開團管理點擊一鍵揪團向朋友推廣！", "success");
 
     selectedGroupId = grp.id;
     await loadAllData();
     switchTab('manage', document.querySelectorAll('.tab-btn')[1]);
-  } catch(e) { alert("開團失敗：" + e.message); }
+  } catch(e) { showToast("開團失敗：" + e.message, "error"); }
 }
 
 // ── 開團管理 ──

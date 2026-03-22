@@ -207,9 +207,16 @@
       <div id="wish-exist-panel" style="display:none">
         <div class="field">
           <label>選擇想敲碗開團的店家 *</label>
-          <select id="sel-exist-store">
-            <option value="">載入中...</option>
-          </select>
+          <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
+            <select id="sel-wish-exist-cat" onchange="renderExistStores()" style="flex:1;padding:0.4rem;border-radius:6px;border:1px solid var(--border);outline:none;background:white">
+              <option value="">🎯 全部分類</option>
+              <option>便當(葷)</option><option>便當(素)</option><option>飲料</option><option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
+            </select>
+            <input type="text" id="inp-wish-exist-search" oninput="renderExistStores()" placeholder="🔍 搜尋店名/品項..." style="flex:1;padding:0.4rem;border-radius:6px;border:1px solid var(--border);outline:none">
+          </div>
+          <div id="exist-store-list" style="margin-bottom:1rem;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:#f8fafc">
+             <div style="padding:1rem;color:var(--text3);text-align:center;font-size:0.85rem">請稍候...</div>
+          </div>
         </div>
       </div>
       
@@ -289,37 +296,60 @@ async function loadStores() {
       let combined = {};
       for(let k in data) Object.assign(combined, data[k]);
       allStores = combined;
-      
-      const sel = document.getElementById('sel-exist-store');
-      let cats = {};
-      const catOrder = ["便當(葷)", "便當(素)", "便當", "飲料", "團購", "麵食", "速食", "其他"];
-      for (let k in combined) {
-        let c = combined[k].category || '其他';
-        if(!cats[c]) cats[c] = [];
-        cats[c].push(k);
-      }
-      let html = '<option value="">請選擇...</option>';
-      const sortedCats = Object.keys(cats).sort((a,b) => {
-        let ia = catOrder.indexOf(a), ib = catOrder.indexOf(b);
-        if(ia===-1) ia=99; if(ib===-1) ib=99;
-        return ia - ib;
-      });
-      sortedCats.forEach(c => {
-        html += `<optgroup label="✨ ${c}">`;
-        cats[c].sort((a,b) => a.localeCompare(b, 'zh-TW')).forEach(k => {
-          html += `<option value="${k}">${k}</option>`;
-        });
-        html += `</optgroup>`;
-      });
-      sel.innerHTML = html;
+      renderExistStores();
     } else {
       console.error("fetch API stores response not ok", res.status);
-      document.getElementById('sel-exist-store').innerHTML = '<option value="">載入下拉清單失敗</option>';
+      document.getElementById('exist-store-list').innerHTML = '<div style="padding:1rem;color:var(--text3);text-align:center">載入清單失敗</div>';
     }
   } catch(e){
     console.error("loadStores exception:", e);
-    document.getElementById('sel-exist-store').innerHTML = '<option value="">網路異常，無法載入清單</option>';
+    document.getElementById('exist-store-list').innerHTML = '<div style="padding:1rem;color:var(--text3);text-align:center">網路異常無法載入</div>';
   }
+}
+
+let existSelectedStore = "";
+
+function renderExistStores() {
+  const container = document.getElementById('exist-store-list');
+  const catParam = document.getElementById('sel-wish-exist-cat').value;
+  const searchKwd = document.getElementById('inp-wish-exist-search').value.trim().toLowerCase();
+  
+  const allList = [];
+  for (let sName in allStores) {
+    const s = allStores[sName];
+    allList.push({ name: sName, cat: s.category || '其他', items: s.items||[] });
+  }
+
+  const filtered = allList.filter(s => {
+    if(catParam && s.cat !== catParam) return false;
+    if(searchKwd) {
+      if(s.name.toLowerCase().indexOf(searchKwd) !== -1) return true;
+      if(s.items.some(i => i.name.toLowerCase().indexOf(searchKwd) !== -1)) return true;
+      return false;
+    }
+    return true;
+  });
+
+  if(!filtered.length) {
+    container.innerHTML = '<div style="padding:1rem;color:var(--text3);text-align:center;font-size:0.85rem">沒有符合的店家</div>';
+    return;
+  }
+
+  filtered.sort((a,b) => a.cat.localeCompare(b.cat, 'zh-TW') || a.name.localeCompare(b.name, 'zh-TW'));
+
+  container.innerHTML = filtered.map(s => {
+    const isSel = existSelectedStore === s.name;
+    return `
+    <div onclick="onExistStoreSelect('${s.name}')" style="padding:0.6rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;background:${isSel?'#eff6ff':'transparent'}">
+      <div style="flex:1;font-weight:700;color:${isSel?'var(--blue)':'inherit'}">${s.name}</div>
+      <div style="font-size:0.75rem;color:var(--text3)">${s.cat}</div>
+    </div>`;
+  }).join('');
+}
+
+function onExistStoreSelect(sname) {
+  existSelectedStore = sname;
+  renderExistStores();
 }
 
 let currentWishFilter = 'pending';
@@ -547,8 +577,8 @@ async function submitWish() {
     if(newItems.length === 0) return showToast("請至少填入一項想吃的品名！");
     payload = { store_name: sname, category: cat, items: newItems, wish_type: 'new' };
   } else {
-    sname = document.getElementById('sel-exist-store').value;
-    if(!sname) return showToast("請選擇店家");
+    sname = existSelectedStore;
+    if(!sname) return showToast("請於下方清單點選一家想敲碗的店！");
     const storeObj = allStores[sname] || {};
     payload = { store_name: sname, category: storeObj.category||'其他', items: storeObj.items||[], wish_type: 'exist' };
   }
@@ -569,7 +599,7 @@ async function submitWish() {
     
     // reset form
     document.getElementById('inp-store-name').value = '';
-    document.getElementById('sel-exist-store').value = '';
+    existSelectedStore = ''; renderExistStores();
     newItems = []; renderNewItems();
     
     await loadWishes();
