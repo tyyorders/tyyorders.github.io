@@ -677,6 +677,10 @@ async function submitGroup() {
   // 若全部都勾選，視為「全開放」存空陣列
   const allowed = (checkedItems.length === allChks.length) ? [] : checkedItems;
 
+  // ⭐ 新增確認對話框，防止重複點擊誤開團
+  const deadlineDisplay = `${dD} ${dH}:${dM}`;
+  if (!confirm(`📋 確認發佈以下開團？\n\n🏪 店家：${storeName}\n📅 取餐日：${tD}\n⏳ 收單截止：${deadlineDisplay}\n\n若事後需要取消，請至「我的開團管理」刪除。`)) return;
+
   const grp = {
     id: Date.now().toString(),
     creator: uName,
@@ -936,30 +940,31 @@ function openText(title, text, isBilling = false) {
 }
 function closeText() { document.getElementById('text-overlay').classList.remove('active'); }
 
+// 一鍵分享文案（只分享，不再複製）
 async function shareAndCopyText() {
   const t = document.getElementById('text-area');
   const txt = t.value;
   const title = document.getElementById('text-title').textContent;
   
-  // 1. 強制複製到剪貼簿 (供電腦端或手機手動貼上備用)
-  try {
-    t.select();
-    document.execCommand('copy');
-  } catch(e) {}
-  
-  // 2. 喚起原生 APP 分享 (僅限支援的手機或部分瀏覽器)
   if (navigator.share) {
-    try { 
-      await navigator.share({ title: title, text: txt }); 
-    } catch(err) { 
-      // 若使用者取消分享或發生錯誤，提醒他已經複製過了
-      if(err.name !== 'AbortError') alert("分享已取消，但文案已為您複製到剪貼簿！您可直接貼上。");
+    try {
+      await navigator.share({ title: title, text: txt });
+    } catch(err) {
+      if(err.name !== 'AbortError') showToast("分享已取消", "warning");
     }
   } else {
-    // 電腦版或不支援的瀏覽器，僅提示以複製
-    alert("已為您複製到剪貼簿！\n(您的裝置不支援自動跳轉 APP 分享，請手動貼上)");
+    // 桌機版：改為直接複製，並提示
+    try {
+      await navigator.clipboard.writeText(txt);
+      showToast("文案已複製到剪貼簿！(裝置不支援分享功能)", "success");
+    } catch(e) {
+      t.select();
+      document.execCommand('copy');
+      showToast("已複製到剪貼簿！", "success");
+    }
   }
 }
+
 
 async function exportCsv() {
   if (!selectedGroupId) return alert("請先選取一筆開團");

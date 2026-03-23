@@ -31,7 +31,11 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px;scroll-behavior:smooth}
-body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body{
+  font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;
+  overflow-x:hidden; /* 防止手機系統性橫向溢出 */
+}
 
 /* ── Header ── */
 .header{
@@ -84,7 +88,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
 .tab-btn:hover{color:var(--text)}
 
 /* ── 主內容 ── */
-.tab-panel{display:none;padding:1.5rem 2rem;animation:fadeIn 0.2s ease}
+.tab-panel{display:none;padding:1rem 1.25rem;animation:fadeIn 0.2s ease}
 .tab-panel.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 
@@ -241,8 +245,9 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
   #inp-pin-show { width: auto !important; max-width: 80px !important; font-size: 0.82rem; padding: 0.3rem 1.8rem 0.3rem 0.4rem; }
 
   /* 頁籤：容許橫向滑動，縮小間距防止截斷 */
-  .tabs { padding: 0 0.5rem; gap: 0.5rem; overflow-x: auto; }
-  .tab-btn { padding: 0.8rem 0.5rem; font-size: 0.85rem; }
+  .tabs { padding: 0 0.5rem; gap: 0; overflow-x: auto; }
+  .tab-btn { padding: 0.75rem 0.6rem; font-size: 0.82rem; flex-shrink: 0; }
+  .tab-panel { padding: 0.75rem 0.85rem; }
 
   /* 客製化選單：標籤與輸入框垂直排列、寬度填滿 */
   .config-row { flex-direction: column; align-items: stretch; gap: 0.6rem; }
