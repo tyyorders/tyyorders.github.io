@@ -268,6 +268,7 @@ async function init() {
     window.location.href = "index.html";
     return;
   }
+  userCheckin(); // ⭐ 整合簽到
   document.getElementById('user-display').textContent = uName;
   await Promise.all([loadWishes(), loadStores()]);
   document.getElementById('loader').style.opacity = '0';
@@ -647,12 +648,6 @@ async function userCheckin() {
     if (res.ok) localStorage.setItem('lastCheckinDate', today);
   } catch(e) {}
 }
-
-const init = async () => {
-    loadProfile();
-    await loadWishes();
-    userCheckin();
-};
 
 window.onload = init;
 </script>
