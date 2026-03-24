@@ -1043,7 +1043,7 @@ function renderGroups() {
     const allowLP = g.opts?.linepay;
     const payTag = allowLP ? '💳 現金 / LINE Pay' : '💵 現金';
     return `<tr onclick="selectGroup('${g.id}',this)" data-gid="${g.id}">
-      <td><strong>${g.store}</strong></td>
+      <td><strong>${g.store}</strong> <span style="font-size:0.75rem;color:var(--text3)">(by ${g.creator||'管理員'})</span></td>
       <td style="white-space:nowrap">${formatDateWeekday(g.target_date)}</td>
       <td style="white-space:nowrap">${formatDeadline(g.deadline)}</td>
       <td><span style="font-size:0.78rem">${payTag}</span></td>

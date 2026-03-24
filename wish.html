@@ -424,6 +424,13 @@ function renderWishes() {
     // items summary
     const summary = (w.items||[]).slice(0, 3).map(i=>`${i.name}($${i.price})`).join('、') + ((w.items&&w.items.length>3)?' 等...':'');
 
+    // 點讚人名單顯示
+    const likeNames = (w.likes && w.likes.length > 0) 
+      ? `<div style="font-size:0.72rem;color:var(--text3);margin-top:0.4rem;line-height:1.2">
+           👍 ${w.likes.slice(0, 10).join('、')}${w.likes.length > 10 ? ' 等 ' + w.likes.length + ' 人' : ''} 推薦
+         </div>` 
+      : '';
+
     return `
       <div class="wish-item" id="wish-${w.id}" style="transition:background 0.5s">
         <div class="wish-header">
@@ -435,6 +442,7 @@ function renderWishes() {
         <div style="font-size:0.85rem;color:var(--text2);margin-top:0.2rem">
           🍽️ 推薦品項：${summary || '未提供'}
         </div>
+        ${likeNames}
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.8rem;border-top:1px solid var(--border);padding-top:0.8rem">
             <button class="btn btn-ghost ${isLiked?'liked':''}" style="padding:0.3rem 0.6rem;font-size:0.95rem;display:flex;align-items:center;gap:0.3rem" onclick="toggleLike(event, '${w.id}')" ${w.status!=='pending'?'disabled':''}>
               ${isLiked?'💖':'🤍'} <span id="like-cnt-${w.id}">${w.likes?.length||0}</span>

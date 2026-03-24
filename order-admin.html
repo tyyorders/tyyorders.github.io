@@ -554,11 +554,12 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
             <th style="cursor:pointer;user-select:none;" onclick="sortUsers('name',this)">姓名 ↕</th>
             <th style="cursor:pointer;user-select:none;" onclick="sortUsers('status',this)">狀態 ↕</th>
             <th style="cursor:pointer;user-select:none;" onclick="sortUsers('created_at',this)">註冊時間 ↕</th>
+            <th style="cursor:pointer;user-select:none;" onclick="sortUsers('last_active',this)">最後上線 ↕</th>
             <th style="text-align:center">操作</th>
           </tr>
         </thead>
         <tbody id="tbody-users">
-          <tr class="empty-row"><td colspan="5">切換至此頁籤自動載入</td></tr>
+          <tr class="empty-row"><td colspan="6">切換至此頁籤自動載入</td></tr>
         </tbody>
       </table>
     </div>
@@ -1085,7 +1086,7 @@ let _usersSortAsc = true; // 排序方向
 
 async function loadUsers() {
   const tbody = document.getElementById('tbody-users');
-  tbody.innerHTML = '<tr class="empty-row"><td colspan="5">載入中...</td></tr>';
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="6">載入中...</td></tr>';
   try {
     const res = await fetch(`${SERVER}/api/admin/users?admin_password=${encodeURIComponent(adminPw)}`);
     if (!res.ok) throw new Error();
@@ -1093,7 +1094,7 @@ async function loadUsers() {
     _usersSortCol = '';
     renderUsers();
   } catch(e) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">⚠️ 載入失敗</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">⚠️ 載入失敗</td></tr>';
   }
 }
 
@@ -1115,7 +1116,7 @@ function sortUsers(col, th) {
 function renderUsers() {
   const tbody = document.getElementById('tbody-users');
   if (!_usersData.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">目前尚無帳號</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">目前尚無帳號</td></tr>';
     return;
   }
   let sorted = [..._usersData];
@@ -1138,11 +1139,13 @@ function renderUsers() {
     const statusBadge = isReset
       ? '<span style="background:#fef3c7;color:#92400e;padding:.15rem .5rem;border-radius:12px;font-size:.75rem;font-weight:700;">⚠️ 待重設</span>'
       : '<span style="background:#f0fdf4;color:#16a34a;padding:.15rem .5rem;border-radius:12px;font-size:.75rem;font-weight:700;">✅ 正常</span>';
+    const lastActiveColor = (u.last_active === '從未登入' || !u.last_active) ? 'var(--red)' : 'var(--text3)';
     return `<tr>
       <td>${u.unit||'－'}</td>
       <td><strong>${u.name}</strong></td>
       <td>${statusBadge}</td>
       <td style="font-size:.8rem;color:var(--text3)">${u.created_at||''}</td>
+      <td style="font-size:.8rem;color:${lastActiveColor}">${u.last_active||'從未登入'}</td>
       <td style="text-align:center">
         <div style="display:flex;gap:.4rem;justify-content:center">
           <button class="btn btn-amber btn-sm" onclick="resetUserPin('${u.name}')" ${isReset?'disabled':''}>🔑 重設安全碼</button>
