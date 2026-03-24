@@ -2537,8 +2537,28 @@ document.querySelectorAll('.modal-overlay').forEach(m=>{
   m.addEventListener('click', e=>{ if(e.target===m) closeModal(m.id); });
 });
 
+async function userCheckin() {
+  const uName = localStorage.getItem('userName');
+  const uPin = localStorage.getItem('userPin');
+  if (!uName || !uPin) return;
+  const today = new Date().toDateString();
+  const lastDate = localStorage.getItem('lastCheckinDate');
+  if (lastDate === today) return; 
+  try {
+    const res = await fetch(`${SERVER}/api/users/checkin`, {
+      method: 'POST',
+      headers: {
+        'x-user-name': encodeURIComponent(uName),
+        'x-user-pin': encodeURIComponent(uPin)
+      }
+    });
+    if (res.ok) localStorage.setItem('lastCheckinDate', today);
+  } catch(e) {}
+}
+
 // 頁面載入時先 ping 一次，讓登入畫面也能看到連線狀態
 pingServer();
+userCheckin();
 </script>
 </body>
 </html>

@@ -1625,11 +1625,30 @@ document.getElementById('modal-edit').addEventListener('click', function(e) {
 // ═══════════════════════════════════════
 // 初始化
 // ═══════════════════════════════════════
+async function userCheckin() {
+  if (!uName || !uPin) return;
+  const today = new Date().toDateString();
+  const lastDate = localStorage.getItem('lastCheckinDate');
+  if (lastDate === today) return; // 今天已簽到過
+  
+  try {
+    const res = await fetch(`${SERVER}/api/users/checkin`, {
+      method: 'POST',
+      headers: {
+        'x-user-name': encodeURIComponent(uName),
+        'x-user-pin': encodeURIComponent(uPin)
+      }
+    });
+    if (res.ok) localStorage.setItem('lastCheckinDate', today);
+  } catch(e) {}
+}
+
 loadProfile();
 let _initDone = false;
 pingServer().then(() => {
   if (isOnline) {
     refreshAll();
+    userCheckin();
   } else {
     document.getElementById('tbody-groups').innerHTML =
       '<tr class="empty-row"><td colspan="4">⚠️ 無法連線至伺服器</td></tr>';
