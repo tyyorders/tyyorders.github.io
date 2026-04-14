@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-<title>點餐小助手</title>
+<title>揪團go</title>
 <style>
   :root {
     --blue: #2563eb;
@@ -205,8 +205,8 @@
 
 <header class="hero">
   <div class="hero-inner">
-    <div class="hero-badge">🍱</div>
-    <h1>點餐小助手</h1>
+    <div class="hero-badge">🫂</div>
+    <h1>揪團go</h1>
     <div class="server-status">
       <div class="dot" id="statusDot"></div>
       <span id="statusText">連線中...</span>
@@ -247,30 +247,9 @@
     <div class="app-arrow" style="color:#fbbf24">→</div>
   </a>
 
-  <a class="app-card red" href="order-admin.html">
-    <div class="app-icon">🍔</div>
-    <div class="app-info">
-      <div class="app-name">後台管理</div>
-      <div class="app-desc">強制管理所有訂單、刪除帳號特權</div>
-      <span class="app-badge">限總管</span>
-    </div>
-    <div class="app-arrow">→</div>
-  </a>
+
 
 </main>
-
-<div class="overlay" id="authOverlay">
-  <div class="dialog">
-    <h3 id="authTitle">🔐 身分驗證</h3>
-    <p id="authDesc">此功能僅供授權人員使用，請輸入密碼。</p>
-    <input type="password" id="authPwd" placeholder="請輸入密碼" onkeydown="if(event.key==='Enter')doAuth()">
-    <div class="dialog-error" id="authError"></div>
-    <div class="dialog-btns">
-      <button class="btn btn-secondary" onclick="closeAuth()">取消</button>
-      <button class="btn btn-primary" onclick="doAuth()">確認</button>
-    </div>
-  </div>
-</div>
 
 <script>
 const SERVER = 'https://lunch-order-173311611761.asia-east1.run.app';
@@ -286,31 +265,6 @@ async function checkServer() {
     document.getElementById('statusText').textContent = '伺服器無回應';
   }
 }
-
-let _pendingRole = '', _pendingUrl = '';
-function closeAuth() {
-  document.getElementById('authOverlay').classList.remove('active');
-}
-async function doAuth() {
-  const pwd = document.getElementById('authPwd').value;
-  const errEl = document.getElementById('authError');
-  errEl.textContent = '';
-  try {
-    const res = await fetch(`${SERVER}/api/auth`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: _pendingRole, password: pwd }),
-      signal: AbortSignal.timeout(5000)
-    });
-    if (res.ok) { closeAuth(); window.location.href = _pendingUrl; }
-    else { errEl.textContent = '❌ 密碼不正確，請再試一次。'; }
-  } catch {
-    errEl.textContent = '⚠️ 無法連線至伺服器，請確認網路或聯繫管理員。';
-  }
-}
-document.getElementById('authOverlay').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeAuth();
-});
 
 checkServer();
 </script>

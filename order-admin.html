@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>點餐系統 — 管理端</title>
+<title>揪團go — 管理端</title>
 <!-- 改用本地系統字體，避免內網環境等待 Google Fonts 逾時 -->
 <style>
 :root{
@@ -172,25 +172,13 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
 </head>
 <body>
 
-<!-- ══════ 密碼遮罩 ══════ -->
-<div id="auth-wall">
-  <div class="auth-box">
-    <div class="auth-icon">🔐</div>
-    <div class="auth-title">管理端登入</div>
-    <div class="auth-sub">請輸入負責人密碼</div>
-    <input class="auth-input" type="password" id="auth-pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAuth()">
-    <button class="auth-btn" onclick="doAuth()">進入管理後台</button>
-    <div class="auth-err" id="auth-err"></div>
-  </div>
-</div>
-
-<!-- ══════ 主體（認證後顯示）══════ -->
-<div id="main-app" style="display:none">
+<!-- 主體 -->
+<div id="main-app">
 
 <header class="header">
-  <span style="font-size:1.4rem">🍱</span>
+  <span style="font-size:1.4rem">🫂</span>
   <div>
-    <div class="header-title">點餐系統 — 負責人管理後台</div>
+    <div class="header-title">揪團go — 管理端</div>
   </div>
   <div class="header-right">
     <div class="status-dot" id="status-dot">
@@ -209,6 +197,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
   <button class="tab-btn" onclick="switchTab('stores',this)">🏪 店家資料維護</button>
   <button class="tab-btn" onclick="switchTab('wishes',this)">🎈 許願池審核</button>
   <button class="tab-btn" onclick="switchTab('users',this)">👥 帳號管理</button>
+  <button class="tab-btn" onclick="switchTab('sysconsole',this)">⚙️ 系統主控台</button>
 </nav>
 
 <!-- ══ TAB 1：訂餐設定與管理 ══ -->
@@ -566,6 +555,86 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
   </div>
 </div>
 
+<!-- ══ TAB 系統主控台 ══ -->
+<div class="tab-panel" id="tab-sysconsole">
+  <div style="max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:1.2rem">
+
+    <!-- 資料庫統計 -->
+    <div class="card">
+      <div class="card-header">
+        <span>📊</span><span class="card-title">Database Stats</span>
+        <span style="margin-left:auto;font-size:.75rem;color:var(--text2)" id="sys-last-refresh">-</span>
+        <button class="btn btn-ghost btn-sm" onclick="sysLoadStats()" style="margin-left:.5rem">↻ Refresh</button>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem">
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+            <div style="font-size:1.8rem;font-weight:900;color:var(--text)" id="sys-stat-orders">-</div>
+            <div style="font-size:.72rem;color:var(--text2);margin-top:.2rem">ORDERS</div></div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+            <div style="font-size:1.8rem;font-weight:900;color:var(--text)" id="sys-stat-groups">-</div>
+            <div style="font-size:.72rem;color:var(--text2);margin-top:.2rem">GROUPS</div></div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+            <div style="font-size:1.8rem;font-weight:900;color:var(--text)" id="sys-stat-users">-</div>
+            <div style="font-size:.72rem;color:var(--text2);margin-top:.2rem">USERS</div></div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+            <div style="font-size:1.8rem;font-weight:900;color:var(--text)" id="sys-stat-stores">-</div>
+            <div style="font-size:.72rem;color:var(--text2);margin-top:.2rem">STORES</div></div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+            <div style="font-size:1.8rem;font-weight:900;color:var(--text)" id="sys-stat-history">-</div>
+            <div style="font-size:.72rem;color:var(--text2);margin-top:.2rem">HISTORY</div></div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+            <div style="font-size:1.8rem;font-weight:900;color:var(--text)" id="sys-stat-wishes">-</div>
+            <div style="font-size:.72rem;color:var(--text2);margin-top:.2rem">WISHES</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 維護操作 -->
+    <div class="card">
+      <div class="card-header">
+        <span>🛠️</span><span class="card-title">Maintenance Operations</span>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem">
+          <!-- Reset -->
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1.2rem;display:flex;flex-direction:column;gap:.5rem">
+            <div style="font-weight:700;color:var(--text)">🗑️ Reset Test Data</div>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">清除所有訂單、開團、歷史、許願池。<br><strong style="color:#d97706">⚠️ 保留帳號與店家菜單</strong></div>
+            <button class="btn btn-danger btn-sm" id="sys-btn-reset" onclick="sysHandleReset()" style="margin-top:.3rem">▶ EXECUTE RESET</button>
+          </div>
+          <!-- Wipe users -->
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1.2rem;display:flex;flex-direction:column;gap:.5rem">
+            <div style="font-weight:700;color:var(--text)">👤 Wipe All Users</div>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">清除所有使用者帳號資料（慎用）。<br><strong style="color:#dc2626">⚠️ 不可逆，所有人需重新註冊</strong></div>
+            <button class="btn btn-danger btn-sm" onclick="sysHandleWipeUsers()" style="margin-top:.3rem">▶ WIPE USERS</button>
+          </div>
+          <!-- Ping -->
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1.2rem;display:flex;flex-direction:column;gap:.5rem">
+            <div style="font-weight:700;color:var(--text)">🌐 API Health Check</div>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.5">對 Cloud Run 伺服器發送 Ping，<br>確認後端是否在線並回應正常。</div>
+            <button class="btn btn-success btn-sm" onclick="sysHandlePing()" style="margin-top:.3rem">▶ PING SERVER</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作日誌 -->
+    <div class="card">
+      <div class="card-header">
+        <span>📋</span><span class="card-title">Operation Log</span>
+        <button class="btn btn-ghost btn-sm" onclick="sysClearLog()" style="margin-left:auto;font-size:.72rem">Clear</button>
+      </div>
+      <div class="card-body">
+        <div id="sys-log-box" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:.8rem;color:var(--text2);min-height:100px;max-height:220px;overflow-y:auto;line-height:1.8;font-family:'Cascadia Code','Courier New',monospace">
+          <div style="color:var(--blue)">[SYSTEM] Console initialized.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 </div><!-- end main-app -->
 
 <!-- 修改開團 Modal -->
@@ -802,38 +871,12 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
 const SERVER = 'https://lunch-order-173311611761.asia-east1.run.app';
 
 // ════════════════════════════
-// 密碼驗證（向後端驗證）
+// 取消密碼，直接初始化
 // ════════════════════════════
-let adminPw = ''; // 登入後儲存，供帳號管理API使用
+let adminPw = ''; // 帳號管理API長期領token（目前空白，保持相容）
 
-async function doAuth() {
-  const pw = document.getElementById('auth-pw').value;
-  const errEl = document.getElementById('auth-err');
-  const btn = document.querySelector('.auth-btn');
-  if (!pw) { errEl.textContent = '請輸入密碼'; return; }
-  btn.textContent = '驗證中...'; btn.disabled = true; errEl.textContent = '';
-  try {
-    const res = await fetch(`${SERVER}/api/auth`, {
-      method:'POST', headers:{'Content-Type':'application/json', 'x-user-name':'admin', 'x-user-pin':adminPw},
-      body: JSON.stringify({ role:'admin', password: pw }),
-      signal: AbortSignal.timeout(5000)
-    });
-    if (res.ok) {
-      adminPw = pw; // 儲存供帳號管理API使用
-      document.getElementById('auth-wall').style.display = 'none';
-      document.getElementById('main-app').style.display = 'block';
-      init();
-    } else {
-      errEl.textContent = '❌ 密碼錯誤，請重試';
-      document.getElementById('auth-pw').value = '';
-      document.getElementById('auth-pw').focus();
-    }
-  } catch(e) {
-    errEl.textContent = `⚠️ 無法連線至伺服器 (${SERVER}) — 請確認伺服器已啟動`;
-  }
-  btn.textContent = '進入管理後台'; btn.disabled = false;
-}
-document.getElementById('auth-pw').addEventListener('keydown', e => { if(e.key==='Enter') doAuth(); });
+// 直接啟動，不需密碼
+document.addEventListener('DOMContentLoaded', () => init());
 
 
 // ════════════════════════════
@@ -940,6 +983,7 @@ function switchTab(id, btn) {
   btn.classList.add('active');
   if (id === 'users') loadUsers();
   if (id === 'wishes') loadWishes();
+  if (id === 'sysconsole') sysLoadStats();
 }
 
 // ════════════════════════════
@@ -2556,7 +2600,152 @@ async function userCheckin() {
   } catch(e) {}
 }
 
-// 頁面載入時先 ping 一次，讓登入畫面也能看到連線狀態
+// ════════════════════════════
+// 系統主控台功能（原 dev-admin.html 整合）
+// ════════════════════════════
+
+/* Log 工具 */
+function sysLog(msg, type = 'info') {
+  const box = document.getElementById('sys-log-box');
+  if (!box) return;
+  const t = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+  const d = document.createElement('div');
+  // type: info=blue, ok=green, err=red, warn=amber
+  const colors = { info: 'var(--blue)', ok: 'var(--green)', err: 'var(--red)', warn: '#d97706' };
+  d.style.color = colors[type] || 'var(--text2)';
+  d.textContent = `[${t}] ${msg}`;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+function sysClearLog() {
+  const box = document.getElementById('sys-log-box');
+  if (box) box.innerHTML = '';
+}
+
+/* 資料庫統計 */
+async function sysLoadStats() {
+  document.getElementById('sys-last-refresh').textContent = '讀取中...';
+  try {
+    const [ordersR, groupsR, usersR, storesR, histR, wishR] = await Promise.all([
+      fetch(`${SERVER}/api/orders`),
+      fetch(`${SERVER}/api/groups`),
+      fetch(`${SERVER}/api/users`),
+      fetch(`${SERVER}/api/stores`),
+      fetch(`${SERVER}/api/admin_history`),
+      fetch(`${SERVER}/api/wishes`)
+    ]);
+    const orders  = await ordersR.json();
+    const groups  = await groupsR.json();
+    const storesData  = await storesR.json();
+    const history = histR.ok ? await histR.json() : [];
+    const wishes  = wishR.ok ? await wishR.json() : [];
+    let usersData = [];
+    try { usersData = await usersR.json(); } catch {}
+
+    let storeCount = 0;
+    Object.values(storesData).forEach(s => storeCount += Object.keys(s).length);
+
+    document.getElementById('sys-stat-orders').textContent  = Array.isArray(orders)  ? orders.length : '?';
+    document.getElementById('sys-stat-groups').textContent  = Array.isArray(groups)  ? groups.length : '?';
+    document.getElementById('sys-stat-users').textContent   = Array.isArray(usersData) ? usersData.length : '?';
+    document.getElementById('sys-stat-stores').textContent  = storeCount;
+    document.getElementById('sys-stat-history').textContent = Array.isArray(history) ? history.length : '?';
+    document.getElementById('sys-stat-wishes').textContent  = Array.isArray(wishes)  ? wishes.length : '?';
+
+    document.getElementById('sys-last-refresh').textContent = 'Last: ' + new Date().toLocaleTimeString('zh-TW');
+    sysLog('Stats refreshed.', 'ok');
+  } catch(e) {
+    document.getElementById('sys-last-refresh').textContent = '讀取失敗';
+    sysLog('Stats fetch failed: ' + e.message, 'err');
+  }
+}
+
+/* Reset（二次確認）*/
+let _sysResetStage = 0;
+let _sysResetTimer = null;
+function sysHandleReset() {
+  const btn = document.getElementById('sys-btn-reset');
+  if (_sysResetStage === 0) {
+    _sysResetStage = 1;
+    btn.textContent = '⚠️ CONFIRM RESET?';
+    btn.style.opacity = '0.7';
+    sysLog('RESET requested. Click again within 8s to confirm.', 'warn');
+    _sysResetTimer = setTimeout(() => {
+      _sysResetStage = 0;
+      btn.textContent = '▶ EXECUTE RESET';
+      btn.style.opacity = '';
+      sysLog('RESET cancelled (timeout).', 'warn');
+    }, 8000);
+    return;
+  }
+  clearTimeout(_sysResetTimer);
+  _sysResetStage = 0;
+  btn.textContent = '▶ EXECUTE RESET';
+  btn.style.opacity = '';
+  sysExecuteReset();
+}
+
+async function sysExecuteReset() {
+  sysLog('Executing RESET...', 'warn');
+  try {
+    const res = await fetch(`${SERVER}/api/reset`, {
+      method: 'DELETE',
+      headers: { 'x-user-pin': encodeURIComponent(adminPw) }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      sysLog(`RESET complete. ${data.message}`, 'ok');
+      sysLoadStats();
+    } else {
+      sysLog(`RESET failed: ${data.detail}`, 'err');
+    }
+  } catch(e) {
+    sysLog('RESET error: ' + e.message, 'err');
+  }
+}
+
+/* Wipe Users */
+async function sysHandleWipeUsers() {
+  const sure = prompt('此操作將刪除所有使用者帳號。\n請輸入 "CONFIRM" 以繼續：');
+  if (sure !== 'CONFIRM') { sysLog('WipeUsers cancelled.', 'warn'); return; }
+  sysLog('Wiping all users...', 'warn');
+  try {
+    const res = await fetch(`${SERVER}/api/reset/users`, {
+      method: 'DELETE',
+      headers: { 'x-user-pin': encodeURIComponent(adminPw) }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      sysLog(`WipeUsers complete. ${data.message}`, 'ok');
+      sysLoadStats();
+    } else {
+      sysLog(`WipeUsers failed: ${data.detail}`, 'err');
+    }
+  } catch(e) {
+    sysLog('WipeUsers error: ' + e.message, 'err');
+  }
+}
+
+/* Ping */
+async function sysHandlePing() {
+  sysLog('Pinging server...', 'info');
+  const t0 = Date.now();
+  try {
+    const res = await fetch(`${SERVER}/api/groups`, { signal: AbortSignal.timeout(5000) });
+    const ms = Date.now() - t0;
+    if (res.ok) {
+      sysLog(`PING OK — ${ms}ms`, 'ok');
+    } else {
+      sysLog(`PING failed — HTTP ${res.status}`, 'err');
+    }
+  } catch(e) {
+    sysLog('PING timeout/error: ' + e.message, 'err');
+  }
+}
+
+// ════════════════════════════
+// 頁面啟動
+// ════════════════════════════
 pingServer();
 userCheckin();
 </script>
