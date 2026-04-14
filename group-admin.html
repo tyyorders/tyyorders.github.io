@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>點餐系統 — 揪團主後台</title>
+<title>揪團go — 揪團主大本營</title>
 <style>
 :root{
   --bg:#f0fdf4;--surface:#fff;--navy:#14532d;--blue:#16a34a;--blue-lt:#dcfce7;
@@ -149,7 +149,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
   <header class="header">
     <span style="font-size:1.4rem">👑</span>
     <div>
-      <div class="header-title">團主大本營</div>
+    <div class="header-title">🫂 揪團go — 團主大本營</div>
       <div class="header-sub" id="header-user">您好，使用者</div>
     </div>
     <div class="header-right">
@@ -1193,20 +1193,31 @@ function renderWishes() {
 }
 
 async function reviewWish(wishId, status) {
-  if(!confirm(status==='approved' ? '確定要在您的「私房菜單」中新增此店家嗎？' : '確定婉拒此許願？')) return;
+  if (!confirm(status === 'approved'
+    ? '確定將此店家收進您的「私房菜單」？\n同意後可在「私房菜單維護」查看或修改。'
+    : '確定婉拒此許願？')) return;
   try {
     const res = await fetch(`${SERVER}/api/wishes/${wishId}/status`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) },
+      headers: {
+        "Content-Type":  "application/json",
+        // x-user-name 讓後端識別揪團主身分 → 寫入正確的私房菜單 namespace
+        "x-user-name": encodeURIComponent(uName),
+        "x-user-pin":  encodeURIComponent(uPin)
+      },
       body: JSON.stringify({ status: status })
     });
-    if(!res.ok) throw new Error(await res.text());
-    alert(status==='approved' ? '已同意並新增至私房菜單！\n您可以在「私房菜單維護」查看或修改。' : '已婉拒該許願。');
+    if (!res.ok) throw new Error(await res.text());
+    alert(status === 'approved'
+      ? '✅ 已納入您的私房菜單！\n請至「私房菜單維護」查看，並可開始揪團使用。'
+      : '已婉拒該許願。');
     await loadAllData();
-  } catch(e) {
+    loadWishes(); // 重新整理許願池，讓已處理項目立即消失
+  } catch (e) {
     alert('操作失敗：' + e.message);
   }
 }
+
 
 async function userCheckin() {
   if (!uName || !uPin) return;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>點餐系統 — 個人版</title>
+<title>揪團go — 跳團點餐</title>
 <!-- 改用本地系統字體，避免內網環境等待 Google Fonts 逾時 -->
 <style>
 :root {
@@ -271,10 +271,10 @@ body{
 
 <!-- Header -->
 <header class="header">
-  <div class="header-icon">🍱</div>
+  <div class="header-icon">🫂</div>
   <div>
-    <div class="header-title">點餐系統</div>
-    <div class="header-sub">個人版</div>
+    <div class="header-title">揪團go</div>
+    <div class="header-sub">跳團點餐永遠不後悲</div>
   </div>
   <div class="header-right">
     <div class="status-dot" id="status-dot">
@@ -348,8 +348,8 @@ body{
 <!-- ═══════════ TAB 1：我要點餐 ═══════════ -->
 <div class="tab-panel active" id="tab-order">
 
-  <!-- 開團清單 -->
-  <div class="card">
+  <!-- 開團清單（帶 gid 進入時自動隐藏）-->
+  <div class="card" id="group-list-card">
     <div class="card-header">
       <div class="card-header-num">1</div>
       <div class="card-header-title">選擇開團</div>
@@ -992,17 +992,33 @@ async function refreshAll() {
     renderGroups();
     populateViewGroups();
 
-    // 解析 URL gid
+    // ── gid 直達模式：帶 gid 進入 → 自動選團並隐藏開團列表 ──
     const params = new URLSearchParams(window.location.search);
     const gid = params.get('gid');
     if (gid && !_gidSelected) {
       _gidSelected = true;
-      // 延遲一下等待 DOM 繪製完成
+      // 隐藏「選擇開團」卡片，讓同事進來直接看到菜單
+      const groupListCard = document.getElementById('group-list-card');
+      if (groupListCard) groupListCard.style.display = 'none';
+      // 等待 DOM 渲染完再自動選團
       setTimeout(() => {
         const row = document.querySelector(`tr[data-gid="${gid}"]`);
         if (row) {
-          row.scrollIntoView({behavior: 'smooth', block: 'center'});
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
           selectGroup(gid, row);
+        } else {
+          // 開團已截止或不存在，願示友善訊息
+          const panel = document.getElementById('order-panel');
+          panel.innerHTML = `
+            <div class="warn-box" style="margin:0 0 1rem;font-size:0.95rem">
+              ⚠️ 此揪團連結已失效或已截止收團<br>
+              <span style="font-size:0.85rem;font-weight:normal">無法再預入訂單，請聯絡揪團主補發連結，或返回首頁查看其他開團。</span>
+            </div>
+            <div style="text-align:center;margin-top:1.5rem">
+              <a href="/" class="btn btn-ghost">← 返回首頁</a>
+            </div>
+          `;
+          panel.style.display = 'block';
         }
       }, 300);
     }
