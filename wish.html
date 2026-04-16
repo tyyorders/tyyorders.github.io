@@ -432,6 +432,14 @@ function renderWishes() {
          </div>` 
       : '';
 
+    // 已被哪些揪團主納入的提示（只在 pending 許願上顯示）
+    const adoptedBy = w.adopted_by || [];
+    const adoptedNote = (w.status === 'pending' && adoptedBy.length > 0)
+      ? `<div style="font-size:0.73rem;color:#0f766e;background:#f0fdfa;border:1px solid #99f6e4;padding:0.25rem 0.6rem;border-radius:6px;margin-top:0.4rem;display:inline-block">
+           ✅ 已有揪團主納入菜單：${adoptedBy.join('、')}
+         </div>`
+      : '';
+
     return `
       <div class="wish-item" id="wish-${w.id}" style="transition:background 0.5s">
         <div class="wish-header">
@@ -444,6 +452,7 @@ function renderWishes() {
           🍽️ 推薦品項：${summary || '未提供'}
         </div>
         ${likeNames}
+        ${adoptedNote}
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.8rem;border-top:1px solid var(--border);padding-top:0.8rem">
             <button class="btn btn-ghost ${isLiked?'liked':''}" style="padding:0.3rem 0.6rem;font-size:0.95rem;display:flex;align-items:center;gap:0.3rem" onclick="toggleLike(event, '${w.id}')" ${w.status!=='pending'?'disabled':''}>
               ${isLiked?'💖':'🤍'} <span id="like-cnt-${w.id}">${w.likes?.length||0}</span>

@@ -164,6 +164,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
     <button class="tab-btn" onclick="switchTab('manage',this)">📋 我的開團管理</button>
     <button class="tab-btn" onclick="switchTab('stores',this)">🏪 私房菜單維護</button>
     <button class="tab-btn" onclick="switchTab('history',this);loadHistory()">🗂️ 我的歷史開團</button>
+    <button class="tab-btn" onclick="switchTab('wishes',this);loadWishes()" id="tab-btn-wishes">✨ 許願池 <span id="wish-badge" style="display:none;background:#ef4444;color:#fff;border-radius:99px;font-size:0.7rem;padding:1px 6px;margin-left:3px">0</span></button>
   </nav>
 
   <!-- 發起新團購 -->
@@ -335,6 +336,37 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
         <div style="padding:0.75rem 1rem;font-size:0.78rem;background:#f8fafc;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
           <span style="color:var(--text3)">ℹ️ 已過取餐日的開團會在重新載入此頁時自動歸檔於此。</span>
           <button class="btn btn-danger btn-sm" id="btn-del-hist" onclick="deleteHistoryRecord()" disabled>🗑️ 刪除這筆歷史</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 許願池 -->
+  <div class="tab-panel" id="tab-wishes">
+    <div class="card" style="max-width:720px;margin:0 auto">
+      <div class="card-header">
+        <span class="card-title">✨ 許願池 — 可納入我的私房菜單</span>
+        <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center">
+          <span style="font-size:.78rem;color:var(--text3)">讚數不受影響，各揪團主可獨立納入</span>
+          <button class="btn btn-ghost btn-sm" onclick="loadWishes()">🔄 重新整理</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <!-- 分類過濾 -->
+        <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+          <select id="wish-cat-filter" onchange="renderWishes()" style="padding:.35rem .6rem;border-radius:20px;border:1px solid var(--border);font-size:.83rem;outline:none;background:#fff">
+            <option value="">🎯 全部分類</option>
+            <option>便當(葷)</option><option>便當(素)</option><option>飲料</option>
+            <option>團購</option><option>麵食</option><option>速食</option><option>其他</option>
+          </select>
+          <select id="wish-sort" onchange="renderWishes()" style="padding:.35rem .6rem;border-radius:20px;border:1px solid var(--border);font-size:.83rem;outline:none;background:#fff">
+            <option value="likes">❤️ 依讚數排序</option>
+            <option value="newest">🕒 依最新排序</option>
+          </select>
+        </div>
+        <!-- 許願卡列表 -->
+        <div id="wishes-container">
+          <div style="text-align:center;color:var(--text3);font-size:.9rem;padding:2rem">讀取中...</div>
         </div>
       </div>
     </div>
@@ -1154,11 +1186,19 @@ let allWishes = [];
 async function loadWishes() {
   const c = document.getElementById('wishes-container');
   if(!c) return;
+  c.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:.9rem;padding:2rem">讀取中...</div>';
   try {
     const res = await fetch(`${SERVER}/api/wishes`);
     if(res.ok) {
       allWishes = await res.json();
       renderWishes();
+      // 更新 tab 徽章：顯示尚未被我納入的許願數
+      const unAdopted = allWishes.filter(w => w.status === 'pending' && !(w.adopted_by || []).includes(uName));
+      const badge = document.getElementById('wish-badge');
+      if(badge) {
+        badge.textContent = unAdopted.length;
+        badge.style.display = unAdopted.length > 0 ? '' : 'none';
+      }
     }
   } catch(e) { console.error(e); }
 }
@@ -1166,55 +1206,93 @@ async function loadWishes() {
 function renderWishes() {
   const c = document.getElementById('wishes-container');
   if(!c) return;
-  // 只顯示 pending 狀態的許願
-  const pending = allWishes.filter(w => w.status === 'pending');
-  if(pending.length === 0) {
-    c.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:0.85rem;padding:1rem">目前無待審核的許願</div>';
+
+  const catFilter = (document.getElementById('wish-cat-filter') || {value:''}).value;
+  const sortType  = (document.getElementById('wish-sort') || {value:'likes'}).value;
+
+  // 顯示所有 pending 的許願（不論其他揪團主是否已納入）
+  let list = allWishes.filter(w => w.status === 'pending');
+  if(catFilter) list = list.filter(w => w.category === catFilter);
+
+  list.sort((a, b) => {
+    if(sortType === 'likes') {
+      const aL = (a.likes||[]).length, bL = (b.likes||[]).length;
+      if(bL !== aL) return bL - aL;
+    }
+    return new Date(b.created_at||0) - new Date(a.created_at||0);
+  });
+
+  if(list.length === 0) {
+    c.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:.9rem;padding:2rem">目前無待處理的許願 🎉</div>';
     return;
   }
-  
-  c.innerHTML = pending.map(w => {
-    const typeLabel = w.wish_type==='exist' ? '<span style="background:#dbeafe;color:#1d4ed8;padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-right:4px">敲碗現有</span>' : '<span style="background:#fce7f3;color:#be185d;padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-right:4px">全新許願</span>';
-    const itemsStr = w.items && w.items.length ? w.items.map(i=>i.name).join('、') : '無指定品項';
+
+  c.innerHTML = list.map(w => {
+    const adoptedBy = w.adopted_by || [];
+    const iAdopted  = adoptedBy.includes(uName);      // 我自己是否已納入
+    const likeCnt   = (w.likes||[]).length;
+    const typeLabel = w.wish_type==='exist'
+      ? '<span style="background:#dbeafe;color:#1d4ed8;padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-right:4px">敲碗現有</span>'
+      : '<span style="background:#fce7f3;color:#be185d;padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-right:4px">全新許願</span>';
+    const itemsStr = (w.items||[]).length ? w.items.map(i=>i.name).join('、') : '無指定品項';
+
+    // 已被哪些揪團主納入的提示
+    const adoptedNote = adoptedBy.length > 0
+      ? `<div style="font-size:.75rem;color:#0f766e;margin-top:.4rem;background:#f0fdfa;padding:.3rem .6rem;border-radius:6px;display:inline-block">
+           ✅ 已被 ${adoptedBy.join('、')} 納入私房菜單
+         </div>`
+      : '';
+
+    // 我已納入 → 顯示標記；未納入 → 顯示按鈕
+    const adoptBtn = iAdopted
+      ? `<span style="background:#dcfce7;color:#166534;border-radius:8px;padding:.35rem .8rem;font-size:.82rem;font-weight:700">✅ 已納入我的私房菜單</span>`
+      : `<button class="btn btn-primary btn-sm" onclick="adoptWish('${w.id}')" id="adopt-btn-${w.id}" style="background:var(--blue)">⭐ 納入我的私房菜單</button>`;
+
     return `
-      <div style="padding:1rem;border:1px solid var(--border);border-radius:8px;background:#f8fafc">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.5rem">
+      <div id="wish-card-${w.id}" style="padding:1rem;border:1px solid var(--border);border-radius:10px;background:${iAdopted?'#f0fdf4':'#f8fafc'};margin-bottom:.8rem;transition:background .3s">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.4rem">
           <div style="font-weight:700;color:var(--navy);font-size:1.05rem">${typeLabel}${w.store_name}</div>
-          <div style="font-size:0.75rem;color:var(--text3)">${w.created_at}</div>
+          <div style="font-size:.75rem;color:var(--text3);white-space:nowrap;margin-left:.5rem">${(w.created_at||'').split(' ')[0]}</div>
         </div>
-        <div style="font-size:0.85rem;color:var(--text2);margin-bottom:0.3rem">提案人：${w.user_name} | 分類：${w.category} | 期待品項：${itemsStr}</div>
-        <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:0.8rem">
-          <button class="btn btn-ghost btn-sm" onclick="reviewWish('${w.id}', 'rejected')">❌ 婉拒</button>
-          <button class="btn btn-primary btn-sm" onclick="reviewWish('${w.id}', 'approved')">✅ 同意並上架到私房菜單</button>
+        <div style="font-size:.83rem;color:var(--text2);margin-bottom:.3rem">
+          👤 ${w.user_name} &nbsp;🏷️ ${w.category} &nbsp;🍽️ ${itemsStr}
+        </div>
+        <div style="font-size:.82rem;color:var(--text3)">❤️ ${likeCnt} 人推薦</div>
+        ${adoptedNote}
+        <div style="display:flex;justify-content:flex-end;margin-top:.8rem;border-top:1px solid var(--border);padding-top:.8rem">
+          ${adoptBtn}
         </div>
       </div>
     `;
   }).join('');
 }
 
-async function reviewWish(wishId, status) {
-  if (!confirm(status === 'approved'
-    ? '確定將此店家收進您的「私房菜單」？\n同意後可在「私房菜單維護」查看或修改。'
-    : '確定婉拒此許願？')) return;
+async function adoptWish(wishId) {
+  // 揪團主個人納入許願池店家到私房菜單
+  if (!confirm('確定將此許願店家納入您的私房菜單嗎？\n納入後可在「私房菜單維護」查看，許願的讚數不受影響、其他揪團主也可繼續納入。')) return;
+
+  const btn = document.getElementById(`adopt-btn-${wishId}`);
+  if(btn) { btn.disabled = true; btn.textContent = '處理中...'; }
+
   try {
     const res = await fetch(`${SERVER}/api/wishes/${wishId}/status`, {
-      method: "PUT",
+      method: 'PUT',
       headers: {
-        "Content-Type":  "application/json",
-        // x-user-name 讓後端識別揪團主身分 → 寫入正確的私房菜單 namespace
-        "x-user-name": encodeURIComponent(uName),
-        "x-user-pin":  encodeURIComponent(uPin)
+        'Content-Type': 'application/json',
+        'x-user-name': encodeURIComponent(uName),
+        'x-user-pin':  encodeURIComponent(uPin)
       },
-      body: JSON.stringify({ status: status })
+      // action="adopt" 告訴後端走「揪團主個人納入」邏輯，不改全域 status
+      body: JSON.stringify({ action: 'adopt' })
     });
-    if (!res.ok) throw new Error(await res.text());
-    alert(status === 'approved'
-      ? '✅ 已納入您的私房菜單！\n請至「私房菜單維護」查看，並可開始揪團使用。'
-      : '已婉拒該許願。');
-    await loadAllData();
-    loadWishes(); // 重新整理許願池，讓已處理項目立即消失
-  } catch (e) {
-    alert('操作失敗：' + e.message);
+    if(!res.ok) throw new Error(await res.text());
+
+    showToast('✅ 已納入您的私房菜單！可在「私房菜單維護」查看並調整。', 'success');
+    await loadAllData(); // 重新整理菜單資料（讓發起揪團的下拉可選）
+    loadWishes();        // 重新整理許願池（更新 adopted_by 顯示）
+  } catch(e) {
+    showToast('操作失敗：' + e.message, 'error');
+    if(btn) { btn.disabled = false; btn.textContent = '⭐ 納入我的私房菜單'; }
   }
 }
 
@@ -1238,4 +1316,24 @@ async function userCheckin() {
 
 loadAllData();
 userCheckin();
+
+// ── Toast \u63d0\u793a\u8f14\u52a9\u51fd\u6578 ──
+function showToast(msg, type = 'success') {
+  // \u5982\u679c\u5df2\u6709 toast \u5bb9\u5668\u5c31\u7528\u5b83\uff0c\u5426\u5247\u52d5\u614b\u5efa\u7acb
+  let tc = document.getElementById('toast-container-ga');
+  if (!tc) {
+    tc = document.createElement('div');
+    tc.id = 'toast-container-ga';
+    tc.style.cssText = 'position:fixed;bottom:1.2rem;right:1.2rem;z-index:500;display:flex;flex-direction:column;gap:.4rem;';
+    document.body.appendChild(tc);
+  }
+  const colors = { success: '#16a34a', error: '#dc2626', warning: '#d97706', info: '#0d9488' };
+  const t = document.createElement('div');
+  t.style.cssText = `padding:.6rem 1rem;border-radius:8px;font-size:.85rem;font-weight:700;color:#fff;
+    background:${colors[type]||colors.info};box-shadow:0 8px 24px rgba(0,0,0,.12);
+    animation:slideIn .25s ease;max-width:300px;`;
+  t.textContent = msg;
+  tc.appendChild(t);
+  setTimeout(() => t.remove(), 3200);
+}
 </script>
