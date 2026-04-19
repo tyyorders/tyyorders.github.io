@@ -172,8 +172,20 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
 </head>
 <body>
 
+<!-- 密碼登入牆 -->
+<div id="auth-wall" style="display: flex;">
+  <div class="auth-box">
+    <div class="auth-icon">⚙️</div>
+    <div class="auth-title">管理端登入</div>
+    <div class="auth-sub">請輸入管理員密碼</div>
+    <input type="password" id="auth-pin" class="auth-input" placeholder="••••••" onkeyup="if(event.key==='Enter') verifyAdmin()">
+    <button class="auth-btn" id="btn-auth-login" onclick="verifyAdmin()">登 入 系 統</button>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+</div>
+
 <!-- 主體 -->
-<div id="main-app">
+<div id="main-app" style="display: none;">
 
 <header class="header">
   <span style="font-size:1.4rem">🫂</span>
@@ -873,11 +885,32 @@ const SERVER = 'https://lunch-order-173311611761.asia-east1.run.app';
 // ════════════════════════════
 // 取消密碼，直接初始化
 // ════════════════════════════
-let adminPw = ''; // 帳號管理API長期領token（目前空白，保持相容）
+let adminPw = '';
 
-// 直接啟動，不需密碼
-document.addEventListener('DOMContentLoaded', () => init());
+async function verifyAdmin() {
+  const pin = document.getElementById('auth-pin').value.trim();
+  if(!pin) return;
+  const err = document.getElementById('auth-err');
+  const btn = document.getElementById('btn-auth-login');
+  err.textContent = ''; btn.disabled = true; btn.textContent = '驗證中...';
+  try {
+    const res = await fetch(`${SERVER}/api/auth`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ role: 'admin', password: pin })
+    });
+    if(!res.ok) throw new Error('密碼錯誤');
+    adminPw = pin;
+    document.getElementById('auth-wall').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    init();
+  } catch(e) {
+    err.textContent = e.message;
+  }
+  btn.disabled = false; btn.textContent = '登 入 系 統';
+}
 
+// document.addEventListener('DOMContentLoaded', () => init());
 
 // ════════════════════════════
 // 通用：表格排序 & 拖曳多選
