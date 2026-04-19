@@ -262,15 +262,24 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
 
   <!-- 私房店家資料維護 -->
   <div class="tab-panel" id="tab-stores">
+    
+    <!-- 分享邀請提示匣 -->
+    <div id="share-inbox" style="display:none; margin-bottom: 1rem;">
+      <div class="card" style="border-color: #93c5fd; background:#eff6ff">
+        <div class="card-header" style="background:#eff6ff; color: #1e3a8a; border-bottom: none">
+          <span class="card-title">📫 菜單分享邀請</span>
+        </div>
+        <div class="card-body" id="share-inbox-list" style="display:flex; flex-direction:column; gap:0.5rem; padding-top:0">
+          <!-- 動態載入 -->
+        </div>
+      </div>
+    </div>
+    
     <div class="two-col">
       <div class="card">
         <div class="card-header">
           <span class="card-title">🏪 我的私房菜單</span>
           <div style="margin-left:auto;display:flex;gap:.4rem;flex-wrap:wrap">
-            <button class="btn btn-ghost" onclick="exportMyStores()" title="匯出清單（JSON），方便分享給下一任揪團主">📤 匯出清單</button>
-            <button class="btn btn-ghost" onclick="openImportModal()" title="輸入其他團主的名字來線上抓取清單">📥 從團主名字匯入</button>
-            <button class="btn btn-ghost" onclick="document.getElementById('inp-import-stores').click()" title="上傳 JSON 檔案匹入">📁 從 JSON 檔匹入</button>
-            <input type="file" id="inp-import-stores" accept=".json" style="display:none" onchange="importMyStores(this)">
             <button class="btn btn-primary" onclick="newStore()">➕ 新增店家</button>
           </div>
         </div>
@@ -281,7 +290,10 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><span class="card-title" id="store-edit-title">編輯店家</span></div>
+        <div class="card-header">
+          <span class="card-title" id="store-edit-title">編輯店家</span>
+          <button class="btn btn-ghost btn-sm" id="btn-share-store" onclick="openShareStoreModal()" style="display:none;margin-left:auto;color:#3b82f6;border-color:#bfdbfe">📤 分享給團購主</button>
+        </div>
         <div class="card-body">
           <div class="field-row">
             <div class="field"><label>店家名稱 *</label><input type="text" id="store-name" placeholder="店家名稱"></div>
@@ -379,24 +391,23 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
   </div>
 </div>
 
-<!-- 🔗 從連結/名字匯入清單 Modal -->
-<div class="overlay" id="mod-import-url">
+<!-- 📤 分享菜單 Modal -->
+<div class="overlay" id="mod-share-store">
   <div class="dialog" style="max-width:460px">
-    <h3 style="margin-top:0;color:var(--navy);font-size:1.05rem;margin-bottom:.4rem">📥 從揪團主分享連結匯入</h3>
+    <h3 style="margin-top:0;color:var(--navy);font-size:1.05rem;margin-bottom:.4rem">📤 分享菜單給團購主</h3>
     <p style="font-size:.82rem;color:var(--text3);margin-bottom:1rem">
-      輸入對方的<strong>揪團主名字</strong>，即可載入他們分享的私房菜單。<br>
-      同名店家會覆蓋，新店家直接加入。
+      輸入對方的<strong>姓名</strong>，將此店家菜單傳送給對方。<br>
+      對方接受後便會納入其私房菜單中。
     </p>
     <div style="margin-bottom:1rem">
-      <label style="display:block;font-size:.82rem;font-weight:700;color:var(--text2);margin-bottom:.3rem">揪團主名字（用於抓取清單）</label>
-      <input type="text" id="inp-import-username" placeholder="例如：王小明"
+      <label style="display:block;font-size:.82rem;font-weight:700;color:var(--text2);margin-bottom:.3rem">發送對象（團購主姓名）</label>
+      <input type="text" id="inp-share-to-user" placeholder="例如：王小明"
         style="width:100%;padding:.55rem .75rem;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:.95rem;outline:none">
     </div>
     <div style="display:flex;justify-content:flex-end;gap:.5rem">
-      <button class="btn btn-ghost" onclick="document.getElementById('mod-import-url').classList.remove('active')">取消</button>
-      <button class="btn btn-primary" onclick="importFromUsername()">🔍 載入並匯入</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('mod-share-store').classList.remove('active')">取消</button>
+      <button class="btn btn-primary" onclick="submitShareStore()">🚀 發送邀請</button>
     </div>
-    <div id="import-url-msg" style="margin-top:.7rem;font-size:.83rem;min-height:1.2em"></div>
   </div>
 </div>
 
@@ -580,6 +591,9 @@ async function loadAllData() {
     const sr = await fetch(`${SERVER}/api/stores`);
     allStores = await sr.json();
     myStores = allStores[uName] || {};
+    
+    // 取得待處理分享
+    await fetchShares();
     
     // 裝填發起團購的 Store 下拉與私房店清單
     renderLaunchStores();
@@ -1104,37 +1118,49 @@ function generateBillingText() {
 
 // ── 私房菜單維護 ──
 function renderMyStoresList() {
-  const ls = document.getElementById('store-list');
-  ls.innerHTML = '';
-  const stores = Object.keys(myStores);
-  if(!stores.length) ls.innerHTML = '<div style="padding:1rem;color:var(--text3)">尚無店家紀錄。請按右側新增。</div>';
-  stores.forEach(sn => {
+  const cont = document.getElementById('store-list');
+  const storeNames = Object.keys(myStores||{});
+  
+  if(!storeNames.length) {
+    cont.innerHTML = '<div style="padding:1rem;color:var(--text3)">目前沒有店家。點擊「新增店家」建立，或點擊「接收分享」匯入。</div>';
+    selectedStoreForEdit = null;
+    clearStoreEditor();
+    return;
+  }
+  cont.innerHTML = '';
+  storeNames.forEach(sn => {
     let d = document.createElement('div');
     d.className = 'store-list-item';
     d.textContent = sn;
     d.onclick = () => {
       document.querySelectorAll('.store-list-item').forEach(x=>x.classList.remove('active'));
       d.classList.add('active');
+      selectedStoreForEdit = sn;
       loadStoreEditor(sn);
     };
-    ls.appendChild(d);
+    cont.appendChild(d);
   });
 }
 
 function newStore() {
   editingStoreName = "";
+  selectedStoreForEdit = "";
   document.getElementById('store-name').value = "";
   document.getElementById('store-cat').value = "飲料";
   document.getElementById('tbody-store-items').innerHTML = "";
   document.getElementById('store-edit-title').textContent = "新增店家";
+  document.getElementById('btn-share-store').style.display = 'none';
   document.querySelectorAll('.store-list-item').forEach(x=>x.classList.remove('active'));
 }
 
 function loadStoreEditor(sn) {
   editingStoreName = sn;
-  document.getElementById('store-edit-title').textContent = `編輯店家: ${sn}`;
-  document.getElementById('store-name').value = sn;
+  selectedStoreForEdit = sn;
+  document.getElementById('store-edit-title').textContent = '編輯店家 - ' + selectedStoreForEdit;
+  document.getElementById('store-name').value = selectedStoreForEdit;
   document.getElementById('store-cat').value = myStores[sn].category || '其他';
+  document.getElementById('btn-share-store').style.display = 'inline-flex';
+  
   const tb = document.getElementById('tbody-store-items');
   tb.innerHTML = '';
   const items = myStores[sn].items || [];
@@ -1468,6 +1494,98 @@ async function adoptWish(wishId) {
   } catch(e) {
     showToast('操作失敗：' + e.message, 'error');
     if(btn) { btn.disabled = false; btn.textContent = '⭐ 納入我的私房菜單'; }
+  }
+}
+
+// ── 菜單分享機制 ──
+let shareTargetStoreName = '';
+
+function openShareStoreModal() {
+  if (!selectedStoreForEdit) return alert('請先選擇一個店家');
+  shareTargetStoreName = selectedStoreForEdit;
+  document.getElementById('inp-share-to-user').value = '';
+  document.getElementById('mod-share-store').classList.add('active');
+}
+
+async function submitShareStore() {
+  const targetUser = document.getElementById('inp-share-to-user').value.trim();
+  if (!targetUser) return alert('請輸入對象姓名');
+  if (!myStores[shareTargetStoreName]) return alert('找不到菜單資料');
+  
+  const payload = {
+    to_user: targetUser,
+    store_name: shareTargetStoreName,
+    store_data: myStores[shareTargetStoreName]
+  };
+  
+  try {
+    const res = await fetch(`${SERVER}/api/stores/shares`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-name': encodeURIComponent(uName),
+        'x-user-pin': encodeURIComponent(uPin)
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(await res.text());
+    showToast('✅ 邀請已發送給 ' + targetUser, 'success');
+    document.getElementById('mod-share-store').classList.remove('active');
+  } catch (e) {
+    alert('發送失敗: ' + e.message);
+  }
+}
+
+async function fetchShares() {
+  const inbox = document.getElementById('share-inbox');
+  const boxList = document.getElementById('share-inbox-list');
+  try {
+    const res = await fetch(`${SERVER}/api/stores/shares`, {
+      headers: {
+        'x-user-name': encodeURIComponent(uName),
+        'x-user-pin': encodeURIComponent(uPin)
+      }
+    });
+    if (!res.ok) return;
+    const shares = await res.json();
+    if (shares.length > 0) {
+      inbox.style.display = 'block';
+      boxList.innerHTML = shares.map(s => `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:.8rem; border-radius:8px; border:1px solid #bfdbfe;">
+          <div style="font-size:.9rem; color:var(--text2)">
+            🔔 <strong>${s.from_user}</strong> 想與您分享菜單 <strong>【${s.store_name}】</strong>
+            <div style="font-size:.75rem; color:var(--text3); margin-top:.2rem">${s.created_at}</div>
+          </div>
+          <div style="display:flex; gap:.4rem">
+            <button class="btn btn-ghost btn-sm" style="color:var(--text2);" onclick="replyShare('${s.id}', 'reject')">拒絕</button>
+            <button class="btn btn-primary btn-sm" onclick="replyShare('${s.id}', 'accept')">接受並匯入</button>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      inbox.style.display = 'none';
+      boxList.innerHTML = '';
+    }
+  } catch(e) { console.error('fetch shares err', e); }
+}
+
+async function replyShare(shareId, action) {
+  try {
+    const res = await fetch(`${SERVER}/api/stores/shares/${shareId}/reply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-name': encodeURIComponent(uName),
+        'x-user-pin': encodeURIComponent(uPin)
+      },
+      body: JSON.stringify({ action })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    
+    showToast(action === 'accept' ? '✅ 已接受分享並納入菜單' : '🗑️ 已拒絕分享');
+    await loadAllData(); // reload will fetch shares and stores
+  } catch(e) {
+    alert('處理失敗: ' + e.message);
   }
 }
 

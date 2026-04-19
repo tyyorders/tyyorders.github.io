@@ -161,7 +161,7 @@
 
       <div style="margin-bottom:1.2rem;display:flex;gap:1.5rem;font-weight:700;font-size:0.95rem;border-bottom:1px solid var(--border);padding-bottom:0.8rem">
         <label style="cursor:pointer;display:flex;align-items:center;gap:0.4rem"><input type="radio" name="wishType" value="new" checked onchange="toggleWishType()"> 許願全新店家</label>
-        <label style="cursor:pointer;display:flex;align-items:center;gap:0.4rem"><input type="radio" name="wishType" value="exist" onchange="toggleWishType()"> 敲碗現有店家開團</label>
+        <label style="cursor:pointer;display:flex;align-items:center;gap:0.4rem"><input type="radio" name="wishType" value="exist" onchange="toggleWishType()"> 敲碗現有團購主開團</label>
       </div>
       
       <!-- 許願全新店家 -->
@@ -213,7 +213,7 @@
     <!-- 敲碗現有店家 -->
       <div id="wish-exist-panel" style="display:none">
         <div class="field">
-          <label>選擇想敲碗開團的店家 *</label>
+          <label>選擇想敲碗開團的團購主 *</label>
           <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
             <select id="sel-wish-exist-cat" onchange="renderExistStores()" style="flex:1;padding:0.4rem;border-radius:6px;border:1px solid var(--border);outline:none;background:white">
               <option value="">🎯 全部分類</option>
