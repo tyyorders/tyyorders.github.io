@@ -806,7 +806,7 @@ async function lwSubmit() {
 function _doLogin(name, unit, pin) {
   localStorage.setItem('order_session', JSON.stringify({ name, unit, pin, loggedIn: true }));
   document.getElementById('inp-name').value = name;
-  document.getElementById('inp-unit').value = unit;
+  if (document.getElementById('inp-unit')) document.getElementById('inp-unit').value = unit;
   // 安全碼欄位填入遮蔽字元（長度對應實際安全碼）
   const pinField = document.getElementById('inp-pin-show');
   pinField.value = pin;
@@ -830,8 +830,10 @@ function togglePinVisible() {
 function saveUnitChange() {
   // 單位可自由修改，即時更新 localStorage
   try {
+    const el = document.getElementById('inp-unit');
+    if (!el) return;
     const s = JSON.parse(localStorage.getItem('order_session') || '{}');
-    s.unit = document.getElementById('inp-unit').value;
+    s.unit = el.value;
     localStorage.setItem('order_session', JSON.stringify(s));
   } catch(e) {}
 }
@@ -847,7 +849,7 @@ function loadProfile() {
     const s = JSON.parse(localStorage.getItem('order_session') || '{}');
     if (s.loggedIn && s.name) {
       document.getElementById('inp-name').value = s.name;
-      document.getElementById('inp-unit').value = s.unit || '';
+      if (document.getElementById('inp-unit')) document.getElementById('inp-unit').value = s.unit || '';
       const pinField = document.getElementById('inp-pin-show');
       if (pinField && s.pin) { pinField.value = s.pin; pinField.type = 'password'; }
       return;
@@ -1254,10 +1256,11 @@ function toggleCartSelect(row) {
 // 送出訂單
 // ═══════════════════════════════════════
 async function submitOrder() {
-  const unit = document.getElementById('inp-unit').value.trim();
+  const unitEl = document.getElementById('inp-unit');
+  const unit = unitEl ? unitEl.value.trim() : "";
   const name = document.getElementById('inp-name').value.trim();
 
-  if (!unit || !name) return showToast('請填寫上方的【單位】與【姓名】', 'warning');
+  if (!name) return showToast('請填寫上方的【姓名】', 'warning');
   if (!currentGroup) return showToast('請先選擇開團', 'warning');
   if (cartItems.length === 0) return showToast('購物車是空的', 'warning');
   if (!isOnline) return showToast('伺服器離線，無法送出', 'error');
