@@ -1124,7 +1124,7 @@ function renderMyStoresList() {
   if(!storeNames.length) {
     cont.innerHTML = '<div style="padding:1rem;color:var(--text3)">目前沒有店家。點擊「新增店家」建立，或點擊「接收分享」匯入。</div>';
     selectedStoreForEdit = null;
-    clearStoreEditor();
+    newStore();
     return;
   }
   cont.innerHTML = '';
@@ -1532,7 +1532,16 @@ async function submitShareStore() {
     showToast('✅ 邀請已發送給 ' + targetUser, 'success');
     document.getElementById('mod-share-store').classList.remove('active');
   } catch (e) {
-    alert('發送失敗: ' + e.message);
+    let msg = e.message;
+    try {
+      let errObj = JSON.parse(e.message);
+      if (errObj.detail && errObj.detail.includes("找不到指定的分享對象")) {
+        msg = "請確認團購主姓名";
+      } else if (errObj.detail) {
+        msg = errObj.detail;
+      }
+    } catch(err2) {}
+    alert('發送失敗: ' + msg);
   }
 }
 
@@ -1550,6 +1559,9 @@ async function fetchShares() {
     const shares = await res.json();
     if (shares.length > 0) {
       inbox.style.display = 'block';
+      const tabBtn = document.querySelector('button[onclick*="stores"]');
+      if (tabBtn) tabBtn.innerHTML = `🏪 店家資料維護 <span style="background:var(--red);color:white;border-radius:10px;padding:2px 6px;font-size:0.7rem;vertical-align:middle;margin-left:4px">${shares.length}</span>`;
+      
       boxList.innerHTML = shares.map(s => `
         <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:.8rem; border-radius:8px; border:1px solid #bfdbfe;">
           <div style="font-size:.9rem; color:var(--text2)">
@@ -1565,6 +1577,8 @@ async function fetchShares() {
     } else {
       inbox.style.display = 'none';
       boxList.innerHTML = '';
+      const tabBtn = document.querySelector('button[onclick*="stores"]');
+      if (tabBtn) tabBtn.innerHTML = `🏪 店家資料維護`;
     }
   } catch(e) { console.error('fetch shares err', e); }
 }
