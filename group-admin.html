@@ -173,7 +173,7 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
       <div class="card-header"><span class="card-title">發布新的揪團</span></div>
       <div class="card-body">
         <div class="field">
-          <label>選擇店家 (包含官方預設與您的私房菜單) *</label>
+          <label>選擇店家（來自您的私房菜單）*</label>
           <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
             <select id="sel-launch-cat" onchange="renderLaunchStores()" style="flex:1;padding:0.4rem;border-radius:6px;border:1px solid var(--border);outline:none;background:white">
               <option value="">🎯 全部分類</option>
@@ -265,8 +265,14 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
     <div class="two-col">
       <div class="card">
         <div class="card-header">
-          <span class="card-title">🏪 我的私有菜單</span>
-          <div style="margin-left:auto"><button class="btn btn-primary" onclick="newStore()">➕ 新增店家</button></div>
+          <span class="card-title">🏪 我的私房菜單</span>
+          <div style="margin-left:auto;display:flex;gap:.4rem;flex-wrap:wrap">
+            <button class="btn btn-ghost" onclick="exportMyStores()" title="匯出清單（JSON），方便分享給下一任揪團主">📤 匯出清單</button>
+            <button class="btn btn-ghost" onclick="openImportModal()" title="輸入其他團主的名字來線上抓取清單">📥 從團主名字匯入</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('inp-import-stores').click()" title="上傳 JSON 檔案匹入">📁 從 JSON 檔匹入</button>
+            <input type="file" id="inp-import-stores" accept=".json" style="display:none" onchange="importMyStores(this)">
+            <button class="btn btn-primary" onclick="newStore()">➕ 新增店家</button>
+          </div>
         </div>
         <div class="card-body" style="padding:0">
           <div class="store-list" id="store-list">
@@ -370,6 +376,27 @@ body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;background:var(-
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- 🔗 從連結/名字匯入清單 Modal -->
+<div class="overlay" id="mod-import-url">
+  <div class="dialog" style="max-width:460px">
+    <h3 style="margin-top:0;color:var(--navy);font-size:1.05rem;margin-bottom:.4rem">📥 從揪團主分享連結匯入</h3>
+    <p style="font-size:.82rem;color:var(--text3);margin-bottom:1rem">
+      輸入對方的<strong>揪團主名字</strong>，即可載入他們分享的私房菜單。<br>
+      同名店家會覆蓋，新店家直接加入。
+    </p>
+    <div style="margin-bottom:1rem">
+      <label style="display:block;font-size:.82rem;font-weight:700;color:var(--text2);margin-bottom:.3rem">揪團主名字（用於抓取清單）</label>
+      <input type="text" id="inp-import-username" placeholder="例如：王小明"
+        style="width:100%;padding:.55rem .75rem;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:.95rem;outline:none">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:.5rem">
+      <button class="btn btn-ghost" onclick="document.getElementById('mod-import-url').classList.remove('active')">取消</button>
+      <button class="btn btn-primary" onclick="importFromUsername()">🔍 載入並匯入</button>
+    </div>
+    <div id="import-url-msg" style="margin-top:.7rem;font-size:.83rem;min-height:1.2em"></div>
   </div>
 </div>
 
@@ -595,21 +622,17 @@ async function loadAllData() {
 
 let launchSelectedStore = ""; // owner|storeName
 
-// 根據分類整理店家選單
+// 根據分類整理店家選單（只顯示自己的私房菜單，已無官方清單）
 function renderLaunchStores() {
   const listContainer = document.getElementById('launch-store-list');
   const catFilter = document.getElementById('sel-launch-cat').value;
   const searchKwd = document.getElementById('inp-launch-search').value.trim().toLowerCase();
   
+  // 只列出自己的私房清單，不再合併 _admin_
   const allList = [];
-  Object.keys(allStores['_admin_']||{}).forEach(storeName => {
-    const store = allStores['_admin_'][storeName];
-    allList.push({ name: storeName, owner: '_admin_', isOfficial: true, cat: store.category || '其他', items: store.items||[] });
-  });
-  
   Object.keys(myStores||{}).forEach(storeName => {
     const store = myStores[storeName];
-    allList.push({ name: storeName, owner: uName, isOfficial: false, cat: store.category || '其他', items: store.items||[] });
+    allList.push({ name: storeName, owner: uName, cat: store.category || '其他', items: store.items||[] });
   });
 
   const filtered = allList.filter(s => {
@@ -623,7 +646,10 @@ function renderLaunchStores() {
   });
 
   if(!filtered.length) {
-    listContainer.innerHTML = '<div style="padding:1rem;color:var(--text3);text-align:center;font-size:0.85rem">沒有符合的店家</div>';
+    const hint = Object.keys(myStores||{}).length === 0
+      ? '<div style="padding:1rem;color:var(--text3);text-align:center;font-size:0.85rem">您尚無私房店家，請先至「私房菜單維護」新增，或匯入其他團主分享的清單。</div>'
+      : '<div style="padding:1rem;color:var(--text3);text-align:center;font-size:0.85rem">沒有符合的店家</div>';
+    listContainer.innerHTML = hint;
     return;
   }
 
@@ -631,10 +657,9 @@ function renderLaunchStores() {
 
   listContainer.innerHTML = filtered.map(s => {
     const val = `${s.owner}|${s.name}`;
-    const badge = s.isOfficial ? '<span class="tag tag-approved" style="font-size:0.7rem;padding:0.1rem 0.4rem;margin-left:0.5rem">官方</span>' : '<span class="tag tag-pending" style="font-size:0.7rem;padding:0.1rem 0.4rem;margin-left:0.5rem;background:#fbcfe8;color:#9d174d">私房</span>';
     const isSel = launchSelectedStore === val;
     return `<div onclick="onStoreChange('${val}')" style="padding:0.6rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;background:${isSel?'#eff6ff':'transparent'}">
-      <div style="flex:1;font-weight:700;color:${isSel?'var(--blue)':'inherit'}">${s.name}${badge}</div>
+      <div style="flex:1;font-weight:700;color:${isSel?'var(--blue)':'inherit'}">${s.name}</div>
       <div style="font-size:0.75rem;color:var(--text3)">${s.cat}</div>
     </div>`;
   }).join('');
@@ -883,7 +908,9 @@ function editOrderDbl(oid) {
   
   let storeItems = [];
   if (g) {
-    const storeData = (allStores['_admin_'] && allStores['_admin_'][g.store]) || (myStores && myStores[g.store]);
+    // 只從自己的私房菜單取店家品項（已無官方清單）
+    const storeData = (myStores && myStores[g.store])
+                   || (allStores[g.store_owner] && allStores[g.store_owner][g.store]);
     if (storeData && storeData.items) {
       if (g.allowed && g.allowed.length > 0) storeItems = storeData.items.filter(it => g.allowed.includes(it.name));
       else storeItems = storeData.items;
@@ -1025,8 +1052,9 @@ function generateShareText() {
   const loc = window.location;
   const link = `${loc.protocol}//${loc.host}${loc.pathname.replace('group-admin','order')}?gid=${g.id}`;
   
-  // 取得店家品項清單
-  const storeData = (allStores['_admin_'] && allStores['_admin_'][g.store]) || (myStores && myStores[g.store]);
+  // 取得店家品項清單（只從自己的私房菜單查找）
+  const storeData = (myStores && myStores[g.store])
+                 || (allStores[g.store_owner] && allStores[g.store_owner][g.store]);
   const itemsText = (storeData && storeData.items && storeData.items.length) 
                      ? "\n📋 菜單速看：\n" + storeData.items.map(i=>`  - ${i.name} $${i.price}`).join('\n') 
                      : "";
@@ -1179,6 +1207,153 @@ async function saveMyStores() {
     await loadAllData();
     loadStoreEditor(sn);
   } catch(e) { alert(e.message); }
+}
+
+// ── 匯出 / 匯入私房清單 ──
+
+/**
+ * 匯出：把自己的私房菜單存成 JSON 檔，方便分享給下一任揪團主
+ */
+function exportMyStores() {
+  if (!Object.keys(myStores||{}).length) {
+    return showToast('您目前沒有任何私房店家可匯出', 'warning');
+  }
+  const payload = {
+    _exported_by: uName,
+    _exported_at: new Date().toLocaleString('zh-TW'),
+    stores: myStores
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `私房菜單_${uName}_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`已匯出 ${Object.keys(myStores).length} 間店家的清單`, 'success');
+}
+
+/**
+ * 匯入：讀取其他揪團主分享的 JSON 清單，合併進自己的私房菜單
+ * 同名店家會覆蓋，新店家直接加入
+ */
+async function importMyStores(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = ''; // reset 讓下次還能選同一個檔案
+
+  let parsed;
+  try {
+    const text = await file.text();
+    parsed = JSON.parse(text);
+  } catch(e) {
+    return showToast('JSON 格式有誤，請確認檔案是否正確', 'error');
+  }
+
+  // 支援直接是 {store:{...}} 或帶有 _exported_by 外層的格式
+  const incoming = parsed.stores || parsed;
+  if (typeof incoming !== 'object' || Array.isArray(incoming)) {
+    return showToast('清單格式不符，無法匯入', 'error');
+  }
+
+  // 驗證內容：每個 key 要有 items
+  const storeNames = Object.keys(incoming);
+  const valid = storeNames.every(k =>
+    !k.startsWith('_') && incoming[k] && Array.isArray(incoming[k].items)
+  );
+  if (!valid || !storeNames.length) {
+    return showToast('清單格式不符，無法匯入', 'error');
+  }
+
+  const overwrite = storeNames.filter(k => myStores[k]);
+  const newOnes   = storeNames.filter(k => !myStores[k]);
+  const msg = overwrite.length
+    ? `將匯入 ${storeNames.length} 間。\n其中 ${overwrite.join('、')} 已存在，將會覆蓋。\n繼續？`
+    : `將匯入 ${storeNames.length} 間新店家，繼續？`;
+  if (!confirm(msg)) return;
+
+  // 合併
+  Object.assign(myStores, incoming);
+
+  try {
+    const res = await fetch(`${SERVER}/api/stores`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-user-name": encodeURIComponent(uName), "x-user-pin": encodeURIComponent(uPin) },
+      body: JSON.stringify({ [uName]: myStores })
+    });
+    if(!res.ok) throw new Error(await res.text());
+    showToast(`✅ 已成功匯入 ${storeNames.length} 間店家！`, 'success');
+    await loadAllData();
+  } catch(e) {
+    showToast('儲存失敗：' + e.message, 'error');
+  }
+}
+
+/**
+ * 打開「從揪團主名字匯入」的 Modal
+ */
+function openImportModal() {
+  document.getElementById('inp-import-username').value = '';
+  document.getElementById('import-url-msg').textContent = '';
+  document.getElementById('mod-import-url').classList.add('active');
+}
+
+/**
+ * 透過揪團主名字從後端 API 線上抓取清單並匯入
+ * 對應後端 GET /api/stores/{username}
+ */
+async function importFromUsername() {
+  const targetName = document.getElementById('inp-import-username').value.trim();
+  const msgEl      = document.getElementById('import-url-msg');
+  if (!targetName) { msgEl.textContent = '請輸入揪團主名字'; return; }
+  if (targetName === uName) { msgEl.textContent = '不能匯入自己的清單'; return; }
+
+  msgEl.style.color = 'var(--text3)';
+  msgEl.textContent = '🔍 載入中...';
+
+  try {
+    const res = await fetch(`${SERVER}/api/stores/${encodeURIComponent(targetName)}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: '找不到此揪團主的清單' }));
+      msgEl.style.color = 'var(--red)';
+      msgEl.textContent = `❌ ${err.detail || '抓取失敗'}`;
+      return;
+    }
+    const data     = await res.json();
+    const incoming = data.stores || {};
+    const storeNames = Object.keys(incoming);
+
+    if (!storeNames.length) {
+      msgEl.style.color = 'var(--amber)';
+      msgEl.textContent = `⚠️ ${targetName} 目前尚無任何私房菜單`;
+      return;
+    }
+
+    // 關閉 Modal，讓 confirm 對話框有清爽的背景
+    document.getElementById('mod-import-url').classList.remove('active');
+
+    const overwrite = storeNames.filter(k => myStores[k]);
+    const msg = overwrite.length
+      ? `從「${targetName}」載入 ${storeNames.length} 間店家。\n其中「${overwrite.join('、')}」已存在，將覆蓋。\n確定匯入？`
+      : `從「${targetName}」載入 ${storeNames.length} 間新店家，確定匯入？`;
+    if (!confirm(msg)) return;
+
+    // 合併到我的私房清單
+    Object.assign(myStores, incoming);
+
+    const saveRes = await fetch(`${SERVER}/api/stores`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-name': encodeURIComponent(uName), 'x-user-pin': encodeURIComponent(uPin) },
+      body: JSON.stringify({ [uName]: myStores })
+    });
+    if (!saveRes.ok) throw new Error(await saveRes.text());
+    showToast(`✅ 已成功從「${targetName}」匯入 ${storeNames.length} 間店家！`, 'success');
+    await loadAllData();
+  } catch(e) {
+    document.getElementById('mod-import-url').classList.add('active');
+    msgEl.style.color = 'var(--red)';
+    msgEl.textContent = `❌ 操作失敗：${e.message}`;
+  }
 }
 
 // ── 許願池相關 ──
