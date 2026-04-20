@@ -1295,6 +1295,12 @@ async function submitOrder() {
         }, 
         body: JSON.stringify(body)
       });
+      if (res.status === 401) {
+        localStorage.removeItem('order_session');
+        showToast('驗證失敗：安全碼不符或已被修改，請重新登入！', 'error');
+        setTimeout(() => location.reload(), 2000);
+        return;
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const result = await res.json();
       if (result.status === 'merged') mergedCount++;
