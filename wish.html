@@ -302,7 +302,10 @@ async function loadStores() {
     if(res.ok) {
       const data = await res.json();
       let combined = {};
-      for(let k in data) Object.assign(combined, data[k]);
+      for(let k in data) {
+        if (k === '_admin_') continue;
+        Object.assign(combined, data[k]);
+      }
       allStores = combined;
       renderExistStores();
     } else {
